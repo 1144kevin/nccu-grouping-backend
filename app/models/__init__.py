@@ -14,6 +14,15 @@ from app.models.domain import (
     Report,
     UserPreference,
 )
+from app.models.stealth import (
+    StealthAgent,
+    StealthEvent,
+    StealthFormation,
+    StealthMatchJob,
+    StealthProposal,
+    StealthProposalMember,
+    StealthSignal,
+)
 
 __all__ = [
     "Block",
@@ -30,4 +39,11 @@ __all__ = [
     "RecommendationEvent",
     "Report",
     "UserPreference",
+    "StealthAgent",
+    "StealthEvent",
+    "StealthFormation",
+    "StealthMatchJob",
+    "StealthProposal",
+    "StealthProposalMember",
+    "StealthSignal",
 ]

@@ -18,4 +18,11 @@ def test_expected_tables_are_registered() -> None:
         "recommendation_events",
         "reports",
         "user_preferences",
+        "stealth_agents",
+        "stealth_events",
+        "stealth_formations",
+        "stealth_match_jobs",
+        "stealth_proposals",
+        "stealth_proposal_members",
+        "stealth_signals",
     }

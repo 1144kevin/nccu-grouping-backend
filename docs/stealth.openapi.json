@@ -1,0 +1,1981 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "政缺一咖 API",
+    "version": "0.1.0",
+    "description": "Local-only prototype; disabled by default. Synthetic bearer credentials only. Offline rule provider, not a connected LLM. PostgreSQL integration pending."
+  },
+  "paths": {
+    "/api/v1/stealth/agent": {
+      "get": {
+        "tags": [
+          "stealth-local"
+        ],
+        "summary": "Get Agent",
+        "operationId": "get_agent_api_v1_stealth_agent_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Agent"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Agent Api V1 Stealth Agent Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "stealth-local"
+        ],
+        "summary": "Put Agent",
+        "operationId": "put_agent_api_v1_stealth_agent_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Agent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/stealth/blocks/{user_id}": {
+      "post": {
+        "tags": [
+          "stealth-local"
+        ],
+        "summary": "Block User",
+        "operationId": "block_user_api_v1_stealth_blocks__user_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "stealth-local"
+        ],
+        "summary": "Unblock User",
+        "operationId": "unblock_user_api_v1_stealth_blocks__user_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stealth/signals": {
+      "post": {
+        "tags": [
+          "stealth-local"
+        ],
+        "summary": "Create Signal",
+        "operationId": "create_signal_api_v1_stealth_signals_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignalInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Signal"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "stealth-local"
+        ],
+        "summary": "List Signals",
+        "operationId": "list_signals_api_v1_stealth_signals_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 512
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignalPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stealth/signals/{signal_id}": {
+      "get": {
+        "tags": [
+          "stealth-local"
+        ],
+        "summary": "Get Signal",
+        "operationId": "get_signal_api_v1_stealth_signals__signal_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "signal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Signal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Signal"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "stealth-local"
+        ],
+        "summary": "Revoke Signal",
+        "operationId": "revoke_signal_api_v1_stealth_signals__signal_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "signal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Signal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Signal"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stealth/drafts": {
+      "post": {
+        "tags": [
+          "stealth-local"
+        ],
+        "summary": "Draft",
+        "operationId": "draft_api_v1_stealth_drafts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftOutput"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/stealth/matches/run": {
+      "post": {
+        "tags": [
+          "stealth-local"
+        ],
+        "summary": "Run Matches",
+        "operationId": "run_matches_api_v1_stealth_matches_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchRunInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchRunOutput"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/stealth/proposals": {
+      "get": {
+        "tags": [
+          "stealth-local"
+        ],
+        "summary": "List Proposals",
+        "operationId": "list_proposals_api_v1_stealth_proposals_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 512
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stealth/proposals/{proposal_id}": {
+      "get": {
+        "tags": [
+          "stealth-local"
+        ],
+        "summary": "Get Proposal",
+        "operationId": "get_proposal_api_v1_stealth_proposals__proposal_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Proposal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stealth/proposals/{proposal_id}/decision": {
+      "post": {
+        "tags": [
+          "stealth-local"
+        ],
+        "summary": "Decide",
+        "operationId": "decide_api_v1_stealth_proposals__proposal_id__decision_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Proposal Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__stealth__schemas__DecisionInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stealth/proposals/{proposal_id}/form": {
+      "post": {
+        "tags": [
+          "stealth-local"
+        ],
+        "summary": "Form",
+        "operationId": "form_api_v1_stealth_proposals__proposal_id__form_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Proposal Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FormationInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Formation"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stealth/proposals/{proposal_id}/formation": {
+      "get": {
+        "tags": [
+          "stealth-local"
+        ],
+        "summary": "Get Formation",
+        "operationId": "get_formation_api_v1_stealth_proposals__proposal_id__formation_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Proposal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Formation"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Agent": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Name",
+            "default": "我的分身"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "daily_invite_limit": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Daily Invite Limit",
+            "default": 3
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone",
+            "default": "Asia/Taipei"
+          },
+          "quiet_start_hour": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 23.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quiet Start Hour",
+            "default": 22
+          },
+          "quiet_end_hour": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 23.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quiet End Hour",
+            "default": 8
+          },
+          "exploration": {
+            "type": "string",
+            "enum": [
+              "familiar",
+              "balanced"
+            ],
+            "title": "Exploration",
+            "default": "familiar"
+          },
+          "tone": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "warm",
+              "playful"
+            ],
+            "title": "Tone",
+            "default": "warm"
+          },
+          "avatar_key": {
+            "type": "string",
+            "enum": [
+              "rice",
+              "pizza",
+              "tea",
+              "cat"
+            ],
+            "title": "Avatar Key",
+            "default": "rice"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "policy_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Policy Version",
+            "default": 1
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user_id",
+          "version",
+          "updated_at"
+        ],
+        "title": "Agent"
+      },
+      "AgentInput": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Name",
+            "default": "我的分身"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "daily_invite_limit": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Daily Invite Limit",
+            "default": 3
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone",
+            "default": "Asia/Taipei"
+          },
+          "quiet_start_hour": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 23.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quiet Start Hour",
+            "default": 22
+          },
+          "quiet_end_hour": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 23.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quiet End Hour",
+            "default": 8
+          },
+          "exploration": {
+            "type": "string",
+            "enum": [
+              "familiar",
+              "balanced"
+            ],
+            "title": "Exploration",
+            "default": "familiar"
+          },
+          "tone": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "warm",
+              "playful"
+            ],
+            "title": "Tone",
+            "default": "warm"
+          },
+          "avatar_key": {
+            "type": "string",
+            "enum": [
+              "rice",
+              "pizza",
+              "tea",
+              "cat"
+            ],
+            "title": "Avatar Key",
+            "default": "rice"
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Version",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AgentInput"
+      },
+      "DraftInput": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "DraftInput"
+      },
+      "DraftOutput": {
+        "properties": {
+          "kind_hint": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SignalKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "category_hint": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "pizza",
+                  "meal",
+                  "drink",
+                  "bakery",
+                  "snack"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Hint"
+          },
+          "acceptable_categories_hint": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "pizza",
+                "meal",
+                "drink",
+                "bakery",
+                "snack"
+              ]
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Acceptable Categories Hint"
+          },
+          "location_hint": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "east_gate",
+                  "main_gate",
+                  "south_gate"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Hint"
+          },
+          "budget_max_twd_hint": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Max Twd Hint"
+          },
+          "roles_hint": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "order",
+                "pickup",
+                "coupon",
+                "share"
+              ]
+            },
+            "type": "array",
+            "maxItems": 4,
+            "title": "Roles Hint"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "needs_confirmation": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Needs Confirmation"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "offline_rules",
+              "ollama_local"
+            ],
+            "title": "Provider",
+            "default": "offline_rules"
+          },
+          "is_llm": {
+            "type": "boolean",
+            "title": "Is Llm",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "needs_confirmation"
+        ],
+        "title": "DraftOutput"
+      },
+      "Formation": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "proposal_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Proposal Id"
+          },
+          "host_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Host Id"
+          },
+          "post_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Post Id"
+          },
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conversation Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "storage": {
+            "type": "string",
+            "enum": [
+              "local_sqlite",
+              "postgresql"
+            ],
+            "title": "Storage",
+            "default": "local_sqlite"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "proposal_id",
+          "host_id",
+          "post_id",
+          "conversation_id",
+          "created_at"
+        ],
+        "title": "Formation"
+      },
+      "FormationInput": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 10,
+            "title": "Content"
+          },
+          "deadline_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Deadline At"
+          },
+          "confirmed_cost_twd": {
+            "type": "integer",
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Confirmed Cost Twd"
+          },
+          "confirmed_roles": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "propertyNames": {
+              "enum": [
+                "order",
+                "pickup",
+                "coupon",
+                "share"
+              ]
+            },
+            "type": "object",
+            "title": "Confirmed Roles"
+          },
+          "host_roles": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "order",
+                "pickup",
+                "coupon",
+                "share"
+              ]
+            },
+            "type": "array",
+            "maxItems": 4,
+            "title": "Host Roles"
+          },
+          "acknowledge_unverified_details": {
+            "type": "boolean",
+            "const": true,
+            "title": "Acknowledge Unverified Details"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "content",
+          "deadline_at",
+          "confirmed_cost_twd",
+          "acknowledge_unverified_details"
+        ],
+        "title": "FormationInput"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "MatchRunInput": {
+        "properties": {
+          "max_proposals": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Max Proposals",
+            "default": 3
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "MatchRunInput"
+      },
+      "MatchRunOutput": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProposalView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "created": {
+            "type": "integer",
+            "title": "Created"
+          },
+          "provider": {
+            "type": "string",
+            "const": "constraint_rules_v1",
+            "title": "Provider",
+            "default": "constraint_rules_v1"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "created"
+        ],
+        "title": "MatchRunOutput"
+      },
+      "ProposalPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProposalView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ProposalPage"
+      },
+      "ProposalView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "pizza",
+              "meal",
+              "drink",
+              "bakery",
+              "snack"
+            ],
+            "title": "Category"
+          },
+          "location_id": {
+            "type": "string",
+            "enum": [
+              "east_gate",
+              "main_gate",
+              "south_gate"
+            ],
+            "title": "Location Id"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Starts At"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ends At"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "budget_max_twd": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Max Twd"
+          },
+          "known_cost_twd": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Known Cost Twd"
+          },
+          "score": {
+            "type": "integer",
+            "title": "Score"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "unknowns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unknowns"
+          },
+          "member_count": {
+            "type": "integer",
+            "title": "Member Count"
+          },
+          "my_decision": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "declined"
+            ],
+            "title": "My Decision"
+          },
+          "my_decline_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "not_now",
+                  "time",
+                  "budget",
+                  "food",
+                  "privacy",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Decline Reason"
+          },
+          "my_roles": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "order",
+                "pickup",
+                "coupon",
+                "share"
+              ]
+            },
+            "type": "array",
+            "title": "My Roles"
+          },
+          "invitation_text": {
+            "type": "string",
+            "title": "Invitation Text"
+          },
+          "why_me": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Why Me"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "unavailable",
+              "formed"
+            ],
+            "title": "Status"
+          },
+          "terms_revision": {
+            "type": "integer",
+            "title": "Terms Revision"
+          },
+          "terms": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FormationInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "my_accepted_terms_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Accepted Terms Revision"
+          },
+          "can_form": {
+            "type": "boolean",
+            "title": "Can Form"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "location_id",
+          "starts_at",
+          "ends_at",
+          "expires_at",
+          "budget_max_twd",
+          "known_cost_twd",
+          "score",
+          "reasons",
+          "unknowns",
+          "member_count",
+          "my_decision",
+          "my_roles",
+          "invitation_text",
+          "why_me",
+          "status",
+          "terms_revision",
+          "terms",
+          "my_accepted_terms_revision",
+          "can_form"
+        ],
+        "title": "ProposalView",
+        "description": "No other user's identity, raw signal, or decision is exposed."
+      },
+      "Signal": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/SignalKind"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "pizza",
+              "meal",
+              "drink",
+              "bakery",
+              "snack"
+            ],
+            "title": "Category"
+          },
+          "acceptable_categories": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "pizza",
+                "meal",
+                "drink",
+                "bakery",
+                "snack"
+              ]
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Acceptable Categories"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "location_id": {
+            "type": "string",
+            "enum": [
+              "east_gate",
+              "main_gate",
+              "south_gate"
+            ],
+            "title": "Location Id"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Starts At"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ends At"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "budget_max_twd": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Max Twd"
+          },
+          "known_cost_twd": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Known Cost Twd"
+          },
+          "tags": {
+            "items": {
+              "type": "string",
+              "maxLength": 32,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Tags"
+          },
+          "dietary_requirements": {
+            "items": {
+              "type": "string",
+              "maxLength": 32,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Dietary Requirements"
+          },
+          "dietary_verified": {
+            "items": {
+              "type": "string",
+              "maxLength": 32,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Dietary Verified"
+          },
+          "roles": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "order",
+                "pickup",
+                "coupon",
+                "share"
+              ]
+            },
+            "type": "array",
+            "maxItems": 4,
+            "title": "Roles"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "owner_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Owner Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SignalStatus",
+            "default": "active"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version",
+            "default": 1
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "category",
+          "title",
+          "location_id",
+          "starts_at",
+          "ends_at",
+          "expires_at",
+          "id",
+          "owner_id",
+          "created_at"
+        ],
+        "title": "Signal"
+      },
+      "SignalInput": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/SignalKind"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "pizza",
+              "meal",
+              "drink",
+              "bakery",
+              "snack"
+            ],
+            "title": "Category"
+          },
+          "acceptable_categories": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "pizza",
+                "meal",
+                "drink",
+                "bakery",
+                "snack"
+              ]
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Acceptable Categories"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "location_id": {
+            "type": "string",
+            "enum": [
+              "east_gate",
+              "main_gate",
+              "south_gate"
+            ],
+            "title": "Location Id"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Starts At"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ends At"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "budget_max_twd": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Max Twd"
+          },
+          "known_cost_twd": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Known Cost Twd"
+          },
+          "tags": {
+            "items": {
+              "type": "string",
+              "maxLength": 32,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Tags"
+          },
+          "dietary_requirements": {
+            "items": {
+              "type": "string",
+              "maxLength": 32,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Dietary Requirements"
+          },
+          "dietary_verified": {
+            "items": {
+              "type": "string",
+              "maxLength": 32,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Dietary Verified"
+          },
+          "roles": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "order",
+                "pickup",
+                "coupon",
+                "share"
+              ]
+            },
+            "type": "array",
+            "maxItems": 4,
+            "title": "Roles"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "category",
+          "title",
+          "location_id",
+          "starts_at",
+          "ends_at",
+          "expires_at"
+        ],
+        "title": "SignalInput"
+      },
+      "SignalKind": {
+        "type": "string",
+        "enum": [
+          "need",
+          "offer",
+          "plan"
+        ],
+        "title": "SignalKind"
+      },
+      "SignalPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Signal"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "SignalPage"
+      },
+      "SignalStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "revoked",
+          "consumed"
+        ],
+        "title": "SignalStatus"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "app__stealth__schemas__DecisionInput": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "accepted",
+              "declined"
+            ],
+            "title": "Decision"
+          },
+          "decline_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "not_now",
+                  "time",
+                  "budget",
+                  "food",
+                  "privacy",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decline Reason"
+          },
+          "expected_terms_revision": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Expected Terms Revision",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "decision"
+        ],
+        "title": "DecisionInput"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8000"
+    }
+  ]
+}
