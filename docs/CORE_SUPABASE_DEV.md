@@ -598,7 +598,7 @@ local 模式才可啟用；device runner 明確關閉此功能，cloud runner �
 
 目前限制：地點只是文字子字串，不是距離；不使用餐點語義、個人預算或時間適配；滿團、剩餘名額及截止緊迫程度尚未納入加權；同分只有時間先後，沒有多樣性或效果追蹤。封鎖及本人隱藏資料可能讓單頁可見筆數少於 limit，需繼續分頁。要強化應先定義推薦目標與可蒐集的成效事件，不能宣稱目前是 AI 推薦。
 
-### 清理後的假資料數量
+### 推薦 v2 套用前的假資料盤點（歷史）
 
 | Supabase 開發專案 | 標記為示範的數量 |
 | --- | ---: |
@@ -615,9 +615,9 @@ local 模式才可啟用；device runner 明確關閉此功能，cloud runner �
 
 另外，App 離線展示種子是 3 貼文、3 申請、5 對話、3 歷史紀錄、4 通知，與目前 Supabase 模式分開。本機舊 `.local/core-ui-smoke.sqlite3` 有 2 測試帳號、2 貼文、1 申請、3 session 記錄，是過往隔離 UI 測試檔，未刪除，也不是目前 Supabase 模式的資料來源。預設 `.local/core.sqlite3`／`stealth.sqlite3` 不存在。pytest 暫存與 Git 交接複本不是 App 當前可見資料，不混入上述數量。
 
-## 推薦 v2：本機完成，雲端待授權
+## 推薦 v2：開發專案已套用
 
-2026-10-19 程式與隔離交易驗證完成。自動審查拒絕持久 migration，認為「本機測試、不部署」尚未明確授權雲端持久變更。Supabase 仍是舊版、7 篇貼文；所有 v2 函式及大量資料預覽均 rollback，不宣稱已套用。
+2026-10-19 明確取得授權後，已在既有指定專案 `axdwbfhrkbovgrbngrrh` 套用 migration `20261018170221 / core_recommendations_capacity_deadline_reasons` 並保留大量展示資料，現在共 127 篇貼文。時間戳是 migration UTC 紀錄，日期以臺北為準。App／API 仍在本機，未部署或啟用付費服務。
 
 v2 先排除滿團、取消、截止、雙向封鎖及本人沒興趣項目，再計分／分頁。主揪算一席，accepted 占位、pending 不占位。只有「依我的偏好」改排序；最新、主揪／參與及歷史流程保留，加入交易仍重驗名額與期限。
 
@@ -628,20 +628,28 @@ v2 先排除滿團、取消、截止、雙向封鎖及本人沒興趣項目，�
 | 剩餘名額 | 1 席 12、2 席 8、3～5 席 4、其餘 0 |
 | 距截止時間 | 30 分鐘內 8、2 小時內 6、6 小時內 3、其餘 0 |
 
-最高 96 分，同分按建立時間／UUID 倒序。這是初版可解釋規則，尚未經使用成效校準，不是 AI 推論或成團機率。無偏好者仍依名額／期限排序。每筆附 `recommendation.version=rules_v2`、score、remaining_seats、as_of 與最多四項理由；API 使用獨立 RecommendationPage，舊 SQL metadata=null 仍相容。App 不捏造理由，會提示更新待完成；前端推薦清單已加 open／名額過濾，舊來源滿團項目也不顯示。
+最高 96 分，同分按建立時間／UUID 倒序。這是初版可解釋規則，尚未經使用成效校準，不是 AI 推論或成團機率。無偏好者仍依名額／期限排序。每筆附 `recommendation.version=rules_v2`、score、remaining_seats、as_of 與最多四項理由；API 使用獨立 RecommendationPage，舊 SQL metadata=null 仍相容。App 不捏造理由，空結果可重新整理／調整偏好；前端推薦清單已加 open／名額過濾，舊來源滿團項目也不顯示。
 
 游標含版本、本人 UUID、偏好版本、固定計分時間、合法庫存指紋及最後排序鍵，15 分鐘到期。名額、版本或可見候選集合變更就拒絕舊游標，App 提供重新整理按鈕、不重試同一個 409。這不是跨請求強一致性 snapshot；庫存指紋仍掃描候選，大規模需另外量測。
 
-待套用 `supabase/core_recommendations_v2.sql` 只替換既有私有函式，保留 public safety wrapper、session 檢查與表格權限，不可重跑原始推薦 SQL 覆蓋安全包裝。官方依據：[Supabase Database Functions](https://supabase.com/docs/guides/database/functions)。
+已套用 `supabase/core_recommendations_v2.sql` 只替換既有私有函式，保留 public safety wrapper、session 檢查與表格權限，不可重跑原始推薦 SQL 覆蓋安全包裝。官方依據：[Supabase Database Functions](https://supabase.com/docs/guides/database/functions)。
 
 ### 大量示範資料與驗證
 
-`supabase/core_recommendations_demo_seed.sql` 批次 `showcase_20261019_recommendations_v2` 準備新增 120 貼文、12 個無密碼／session 的虛構人物、138 筆 accepted 申請、240 則訊息。全部標記【示範】，掛到既有展示 owner，不修改既有 Auth 身份，不啟用新人的偷揪分身；訊息發送者全是虛構主揪，不會訂購／付款。8 種餐點標籤、6 種地點、2～6 人容量、不同費用與 20 分鐘至 7 天期限；新增資料在預覽當下分為 90 可加入、10 滿團、10 取消、10 截止。
+`supabase/core_recommendations_demo_seed.sql` 批次 `showcase_20261019_recommendations_v2` 已新增 120 貼文、12 個無密碼／session 的虛構人物、138 筆 accepted 申請、240 則訊息。全部標記【示範】，掛到既有展示 owner，不修改既有 Auth 身份，不啟用新人的偷揪分身；訊息發送者全是虛構主揪，不會訂購／付款。8 種餐點標籤、6 種地點、2～6 人容量、不同費用與 20 分鐘至 7 天期限；新增資料在種下當下分為 90 可加入、10 滿團、10 取消、10 截止。
 
-套用後總數將是 127 貼文、16 示範人物、148 申請、243 訊息；時間推進會改變可加入數。原 3 個偷揪示範分身／需求保留。批次加鎖且只執行一次，重跑不重複新增，也不復活經既有示範清理刪掉的貼文；清理仍檢查外部參與者。本機數量預覽為忽略的 `.local/recommendations-v2-preview.json`。資料腳本不是 migration，仍須雲端寫入授權。
+清理臨時測試後，實際總數是 127 示範貼文、16 示範人物、148 申請、243 訊息；另 1 個既有帳號，共 17 個 profile。原 3 個偷揪示範分身／需求保留。時間推進會改變可加入數。批次加鎖且只執行一次，重跑不重複新增，也不復活經既有示範清理刪掉的貼文；清理仍檢查外部參與者。
 
 已執行：四個合成身份的 `core_recommendations_v2_smoke.sql` 驗證分數／理由、名額／期限順位、滿團／取消／截止／隱藏／封鎖排除、固定時間分頁、跨帳號及舊庫存游標拒絕；大量 seed 驗證 120 貼文／12 人／240 訊息與重跑不重複。127 篇臨時資料集中，四頁共 94 筆可加入資料且無重複。全部交易 rollback，未留測試帳號或貼文。
 
-後端 431 項、Ruff／格式通過；前端 135 項、TypeScript、變更檔 ESLint、離線 Web export 通過。API 測試確認理由不被 response model 丟棄及舊 SQL 相容；本輪未用真人帳號驗 UI。再查雲端為 7 貼文、新批次人物 0、v2 未持久套用。安全 advisor 僅有既有 Auth 密碼外洩防護未啟用提醒，本輪不改 Auth／付費選項。
+本輪後端 431 項、Ruff／格式通過；前端 135 項、TypeScript、變更檔 ESLint 通過，前一輪 Web export 通過。API 測試確認理由不被 response model 丟棄及舊 SQL 相容。套用後實際帳號驗收及本輪修正見下段；安全 advisor 的既有 Auth 密碼外洩防護提醒沒有因此修改或啟用付費選項。
 
-授權後接續：套用 migration → rollback smoke → 執行一次 seed → 唯讀盤點 → 隔離帳號驗證本機 API／App → 更新狀態及交接包。App 與 API 保持本機，不部署公開服務。
+### 套用後實際帳號驗收與修正
+
+已在套用後資料庫重跑 rollback smoke 通過，再以三個可登入的隔離 Supabase 帳號透過本機 API 執行 `scripts/smoke_recommendations_cloud.py`。四筆臨時貼文測試前三名為 48／40／36 分，四項理由包含偏好標籤、地點、剩餘席位與截止時間；含原本大量資料共 97 個可加入項目分四頁，沒有重複或滿團／截止／取消資料。
+
+另遍歷最新清單，127 筆保留示範資料（含不可推薦的滿團及關閉範例）全數通過 API 回應驗證。確認跨帳號游標拒絕、隱藏項目後要求重新整理、改偏好後理由／分數更新、最後一席補滿後移出推薦且舊游標拒絕；滿團貼文仍可由原本詳情入口讀取。這是實際 Auth／資料庫／本機 API 測試，本輪未重新操作整段瀏覽器 UI。
+
+驗收找到 seed 的 `location.source=manual` 不符合既有 Pydantic／App 地點合約，會讓清單回 500。已修正 seed 省略手填地點的可選 source，並執行 `core_recommendations_demo_location_fix.sql`，只修復此新批次的 payload／original_payload 且增加版本；沒有放寬既有地點型別或偽稱資料來自 OpenStreetMap。修正後上述完整 API 驗收通過。
+
+兩輪使用的隔離帳號及其臨時貼文／申請／偏好／session 已依 UUID 與 scope 清除，最後一次性帳號數為 0；新增展示批次與既有資料保留。測試密碼與建帳 SQL 已從本機忽略目錄移除，安全報告保留 `.local/recommendations-e2e/report.json`。App／API 未部署，沒有呼叫模型、寄信或使用付費服務。
