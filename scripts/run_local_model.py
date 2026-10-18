@@ -13,8 +13,8 @@ def main():
     if not RUNTIME.is_file():
         raise SystemExit("Portable Ollama missing; see docs/CORE_SUPABASE_DEV.md")
     action = sys.argv[1:]
-    if action not in ([], ["pull"], ["status"]):
-        raise SystemExit("Usage: run_local_model.py [pull|status]")
+    if action not in ([], ["pull"], ["pull-embedding"], ["status"]):
+        raise SystemExit("Usage: run_local_model.py [pull|pull-embedding|status]")
     state = ROOT / ".local" / "ollama" / "home"
     state.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
@@ -32,7 +32,15 @@ def main():
             "OLLAMA_NOHISTORY": "1",
         }
     )
-    args = ["pull", "qwen3.5:4b"] if action == ["pull"] else ["ps"] if action else ["serve"]
+    args = (
+        ["pull", "qwen3-embedding:0.6b"]
+        if action == ["pull-embedding"]
+        else ["pull", "qwen3.5:4b"]
+        if action == ["pull"]
+        else ["ps"]
+        if action
+        else ["serve"]
+    )
     print("Project-local Ollama; cloud disabled; loopback only. Ctrl+C stops it.", flush=True)
     try:
         subprocess.run([str(RUNTIME), *args], cwd=state, env=env, check=True)
