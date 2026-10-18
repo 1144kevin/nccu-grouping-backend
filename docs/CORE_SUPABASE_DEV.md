@@ -31,7 +31,7 @@ Google 登入與本機回呼已加入，使用者已確認 Google 真實登入�
 
 ## 啟動
 
-本輪最終驗證：後端317項、前端111項測試通過；Ruff、TypeScript、ESLint、兩項 release 設定測試通過；Web／iOS JavaScript 與資源離線匯出成功。後端有兩項既有依賴 deprecation warnings。前端冷快取第一次有5秒 timeout，暖快取與明確15秒上限完整重跑皆通過；未刪除或跳過斷言。這些不是實機／簽章／TestFlight 測試。
+本輪最終驗證：後端334項、前端118項測試通過；Ruff、TypeScript、ESLint、兩項 release 設定測試通過；Web／iOS JavaScript 與資源離線匯出成功。後端有兩項既有依賴 deprecation warnings。前端冷快取第一次有5秒 timeout，暖快取與明確15秒上限完整重跑皆通過；未刪除或跳過斷言。這些不是實機／簽章／TestFlight 測試。
 
 可重跑後端 `.venv\Scripts\python.exe -m pytest -o addopts="" -q --basetemp=.local/pytest-manual-01 -o cache_dir=.local/pytest-cache`（每輪改用新的 basetemp 名稱）；前端 `npm test -- --runInBand --cacheDirectory=.local/jest --testTimeout=15000`、`npm run typecheck`、`npm run lint`、`npm run test:release-config`、`npm run ios:preflight`。SQL smoke 檔僅供指定開發專案的隔離交易驗證，請勿一鍵重跑所有 migration。
 
@@ -235,7 +235,7 @@ from public.core_posts where demo_batch='showcase_20261017_v1';
 
 兩個團隊 Google 測試帳號各自建立並開啟分身，不勾選示範。甲建立正餐需求、正門、相容時間、預算 120、晚餐標籤；乙建立相同分類／地點／時間的資源，已知每人費用 90，明確願意下單與取餐。乙新增時就會嘗試配對，甲不用發文也能在約十秒後看到結果。兩人可以先表達意願，再依下方「最終確認與正式成團」步驟操作。
 
-單純表達意願不會建立核心拼單或聊天室。必須全員另外確認同一版費用、分工與公開內容，才會成團並公開約定的內容；原始私密訊號仍不會複製到公開拼單。這輪沒有搬移舊本機提案／封鎖紀錄；雲端封鎖管理仍待整合。若沒有符合條件的其他需求，沒有配對是正常結果。
+單純表達意願不會建立核心拼單或聊天室。必須全員另外確認同一版費用、分工與公開內容，才會成團並公開約定的內容；原始私密訊號仍不會複製到公開拼單。這輪沒有搬移舊本機提案／封鎖紀錄；雲端全 App 封鎖管理已整合；舊本機封鎖不會自動上傳。若沒有符合條件的其他需求，沒有配對是正常結果。
 
 ### 資料與 API
 
@@ -412,3 +412,20 @@ cd /d C:\Users\aup20\projects\nccu-grouping-backend
 - App 提出方案及第一人明確同意後仍未成團；第二個隔離身份透過 API 明確同意同一版後才建立一筆正式拼單，雙方聊天權限及 App 聊天畫面都正常。重送最終同意仍是同一筆拼單。
 - Web 與 iOS JavaScript 以 Supabase 開發模式離線匯出至前端 `.expo/stealth-local-model-supabase/`，未進行 Xcode 簽署、iPhone 實機或 TestFlight 上傳。
 - 畫面證據在後端 `.local/core-evidence/stealth-local-model-questions.png`、`stealth-local-model-plan.png`、`stealth-local-model-formed.png`。兩個隔離帳號、sessions、需求、配對、成團拼單與臨時憑證檔已清除；DB 恢復七筆示範拼單、三則訊息、三筆示範偷揪需求，沒有本輪臨時帳號。
+
+
+## 雲端封鎖與本人刪除帳號（本機程式／開發專案）
+
+個人公開頁提供「封鎖」二次確認；「帳號與隱私」列出本人封鎖名單及解除入口。封鎖會立即清除當前帳號查詢快取，雙向隱藏一般貼文、公開個人資料、使用者搜尋、相關訊息搜尋與新偷揪配對，禁止新申請、接受申請及與封鎖對象共群的新訊息。未接受申請取消，未成團方案失效並清掉舊同意；解除封鎖不恢復它們。封鎖名單不公開。
+
+已接受的團員仍保留必要拼單紀錄與退出權，不自動踢人或取消別人的訂單。群組中被封鎖作者的訊息、預覽與未讀數會過濾；其他未涉及封鎖的團員仍可發訊息。已發出的圖片簽署網址可能在剩餘有效期（最多60秒）內可用。這不是完整內容治理或管理者停權。
+
+「帳號與隱私 → 刪除我的帳號」先顯示影響數量與警告，再取得10分鐘確認碼，手動輸入大寫 DELETE 才可執行。登入需在15分鐘內，refresh 不算重新登入。確認碼綁定本人及該次登入，資料庫只存雜湊；預覽／取消不會開始刪除。開始後凍結一般操作，先以本人 JWT 經 Storage API 移除真實圖片，再在交易中刪除 Auth、sessions、refresh tokens、profile、偏好、本人訊息、分身／需求及相關配對。其他人的拼單與訊息保留；本人主揪及本人示範批次的拼單與相關聊天室移除，其他人的名額會釋出。全員確認規則維持原樣。
+
+清理中斷不顯示成功。重新登入同一帳號會進入專用復原畫面，重新輸入 DELETE 可繼續；已清掉的圖片可以安全重試。其他 bucket 殘留檔案會阻止完成，不能把 storage.objects 資料列刪掉冒充實體清理。刪除不會刪 Google 帳號、手機照片、他人保存副本或引用；正式備份／日誌保留期限仍需另訂。再次 Google 登入會建立新的 App 帳號。
+
+新增 API（皆使用本人登入，不接受 owner_id）：GET /account/blocks、PUT／DELETE /account/blocks/{user_id}；GET /account/deletion、POST /account/deletion-preview、DELETE /account（JSON confirmation=DELETE、首次帶 challenge）。API 合約見 core.openapi.json。沒有使用 service_role、付費服務或部署。
+
+依序已套用 core_user_safety.sql、core_account_deletion.sql、core_account_deletion_storage_access.sql、core_account_deletion_storage_serialization.sql；已套用檔案不可重跑或覆寫，修正要另增 migration。所有 app RPC 驗證目前 auth.sessions，舊 private RPC 不能直接繞過。Storage 與刪除使用同一交易鎖序，避免清理時新增圖片；目前採全域序列化以保護小型開發專案，正式大量流量需評估吞吐。
+
+驗證：334個後端、118個前端測試；三個隔離 Auth 身份實測封鎖、共享群組、第三人可用、公開／草稿實體圖片清理、登出重新登入續作、舊憑證拒絕。另以 core_user_safety_smoke.sql、core_account_deletion_smoke.sql、core_account_deletion_edges_smoke.sql 交易回滾測試逾期／跨登入確認碼、舊登入、偷揪及示範批次 FK、成團分工去識別。全部隔離身份、資料及本機測試憑證檔已清除；原5個 Auth／profile、7筆示範拼單、3則訊息、3筆示範需求保留。這不代表已完成 iPhone 原生或 TestFlight 驗收。

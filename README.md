@@ -14,7 +14,7 @@ FastAPI backend，目前串接登入、拼單、文字聊天與偷揪雲端分�
 
 ## 技術與後續規劃
 
-本輪已完成項目、仍缺功能及 Mac／iPhone 驗收表整理於 [開發交付與發行準備](docs/RELEASE_READINESS.md)。目前改動仍在原分支工作目錄，尚未 commit／push；TestFlight 尚未建置或上傳。
+本輪已完成項目、仍缺功能及 Mac／iPhone 驗收表整理於 [開發交付與發行準備](docs/RELEASE_READINESS.md)。改動依功能在原分支分開 commit；沒有 push，TestFlight 尚未建置或上傳。
 
 - FastAPI + Pydantic
 - SQLAlchemy async + asyncpg、Alembic：既有資料層與部署規劃；目前 `core_*` 雲端流程使用 Supabase 交易 RPC

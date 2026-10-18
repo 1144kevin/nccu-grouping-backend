@@ -6,6 +6,178 @@
     "description": "Local FastAPI login/grouping API with separate SQLite and Supabase development modes. Supabase mode supports email auth, Google web/native iOS PKCE, session refresh, group text chat with read receipts, request activity, public profiles, order history, scoped search, account preferences, private reports, saved post reminders, private verified post images, inbox archive/mute, scoped demo cleanup and database clock synchronization. Stealth intake supports optional local-only structured model extraction and follow-up; matches include free deterministic cost/role drafts, editable final terms and atomic formation after unanimous versioned consent. Requires loopback and ENVIRONMENT=local."
   },
   "paths": {
+    "/api/v1/account/blocks": {
+      "get": {
+        "tags": [
+          "account-blocks"
+        ],
+        "summary": "Blocks",
+        "operationId": "blocks_api_v1_account_blocks_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockList"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account/blocks/{user_id}": {
+      "put": {
+        "tags": [
+          "account-blocks"
+        ],
+        "summary": "Block",
+        "operationId": "block_api_v1_account_blocks__user_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "account-blocks"
+        ],
+        "summary": "Unblock",
+        "operationId": "unblock_api_v1_account_blocks__user_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/deletion": {
+      "get": {
+        "tags": [
+          "account-deletion"
+        ],
+        "summary": "Deletion Status",
+        "operationId": "deletion_status_api_v1_account_deletion_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionStatus"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account/deletion-preview": {
+      "post": {
+        "tags": [
+          "account-deletion"
+        ],
+        "summary": "Deletion Preview",
+        "operationId": "deletion_preview_api_v1_account_deletion_preview_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionPreview"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/auth/refresh": {
       "post": {
         "tags": [
@@ -2849,6 +3021,69 @@
         ],
         "title": "AssetView"
       },
+      "BlockList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BlockView"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "BlockList"
+      },
+      "BlockResult": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "blocked": {
+            "type": "boolean",
+            "title": "Blocked"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user_id",
+          "blocked"
+        ],
+        "title": "BlockResult"
+      },
+      "BlockView": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user_id",
+          "display_name",
+          "created_at"
+        ],
+        "title": "BlockView"
+      },
       "ChatActivity": {
         "properties": {
           "groups": {
@@ -3779,6 +4014,104 @@
           "post"
         ],
         "title": "ConversationView"
+      },
+      "DeletionCounts": {
+        "properties": {
+          "owned_posts": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Owned Posts"
+          },
+          "messages": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Messages"
+          },
+          "images": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Images"
+          },
+          "participations": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Participations"
+          },
+          "proposals": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Proposals"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "owned_posts",
+          "messages",
+          "images",
+          "participations",
+          "proposals"
+        ],
+        "title": "DeletionCounts"
+      },
+      "DeletionPreview": {
+        "properties": {
+          "phase": {
+            "type": "string",
+            "const": "prepared",
+            "title": "Phase"
+          },
+          "challenge": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "title": "Challenge"
+          },
+          "expires_in": {
+            "type": "integer",
+            "const": 600,
+            "title": "Expires In"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/DeletionCounts"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "phase",
+          "challenge",
+          "expires_in",
+          "counts"
+        ],
+        "title": "DeletionPreview"
+      },
+      "DeletionStatus": {
+        "properties": {
+          "phase": {
+            "type": "string",
+            "enum": [
+              "none",
+              "prepared",
+              "deleting"
+            ],
+            "title": "Phase"
+          },
+          "recent_auth": {
+            "type": "boolean",
+            "title": "Recent Auth"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/DeletionCounts"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "phase",
+          "recent_auth",
+          "counts"
+        ],
+        "title": "DeletionStatus"
       },
       "DemoCleanupView": {
         "properties": {
@@ -5285,6 +5618,11 @@
       },
       "ProfileView": {
         "properties": {
+          "deletion_pending": {
+            "type": "boolean",
+            "title": "Deletion Pending",
+            "default": false
+          },
           "id": {
             "type": "string",
             "format": "uuid",

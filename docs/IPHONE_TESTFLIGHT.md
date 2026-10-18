@@ -68,6 +68,6 @@ Windows Ollama 也僅供 localhost API 使用。打包 App 不會把 3.3 GB 模�
 
 ## 公開測試前仍需補的產品工作
 
-目前圖片、語音上傳與遠端推播未串接；圖示仍是 Expo 預設素材。回報已可儲存，不等於已有管理者處理流程。帳號刪除、真正的跨帳號封鎖、內容過濾、管理回報與可聯繫的營運資訊仍需實作／確認。Apple 對 UGC 與帳號刪除有明確要求，見 [App Review 1.2](https://developer.apple.com/app-store/review/guidelines/#user-generated-content) 與 [帳號刪除指引](https://developer.apple.com/help/app-review/guideline-reference/5-1-1-account-deletion)。使用 Google 等第三方主帳號登入，也需對照 [4.8 Login Services](https://developer.apple.com/app-store/review/guidelines/#login-services) 評估提供符合條件的登入選項，通常會採用 Sign in with Apple。
+單張拼單圖片已串接；語音上傳與遠端推播未串接；圖示仍是 Expo 預設素材。回報已可儲存，不等於已有管理者處理流程。雲端跨帳號封鎖與 App 內刪除帳號已串接，仍需實機驗收；內容過濾、管理回報與可聯繫的營運資訊仍需實作／確認。Apple 對 UGC 與帳號刪除有明確要求，見 [App Review 1.2](https://developer.apple.com/app-store/review/guidelines/#user-generated-content) 與 [帳號刪除指引](https://developer.apple.com/help/app-review/guideline-reference/5-1-1-account-deletion)。使用 Google 等第三方主帳號登入，也需對照 [4.8 Login Services](https://developer.apple.com/app-store/review/guidelines/#login-services) 評估提供符合條件的登入選項，通常會採用 Sign in with Apple。
 
 這些是送測準備缺口，不能把目前離線檢查通過寫成已完成 TestFlight。
