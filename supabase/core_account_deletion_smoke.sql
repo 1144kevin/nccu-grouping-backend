@@ -1,0 +1,51 @@
+begin;
+create temporary table deletion_fixture(name text,user_id uuid,session_id uuid);
+insert into deletion_fixture values('delete',gen_random_uuid(),gen_random_uuid()),('keep',gen_random_uuid(),gen_random_uuid());
+insert into auth.users(id,email,email_confirmed_at) select user_id,user_id::text||'@example.test',now() from deletion_fixture;
+insert into auth.sessions(id,user_id,created_at) select session_id,user_id,clock_timestamp() from deletion_fixture;
+grant select on deletion_fixture to authenticated;
+set local role authenticated;
+do $test$
+declare a record; b record; pa jsonb; pb jsonb; j jsonb; preview jsonb; input jsonb;
+begin
+ select * into a from deletion_fixture where name='delete'; select * into b from deletion_fixture where name='keep';
+ input:=jsonb_build_object('content','隔離交易的帳號清理測試，不會真的下單。','tags',jsonb_build_array('驗證'),'capacity',2,
+  'deadline_at',clock_timestamp()+interval '2 hours','price_per_person',null,'location',jsonb_build_object('name','合成測試點','latitude',24.987,'longitude',121.576));
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',a.user_id,'session_id',a.session_id,'role','authenticated')::text,true);
+ pa:=public.core_dispatch('create',jsonb_build_object('request_key','deletion-post-alpha','value',input));
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',b.user_id,'session_id',b.session_id,'role','authenticated')::text,true);
+ pb:=public.core_dispatch('create',jsonb_build_object('request_key','deletion-post-bravo','value',input));
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',a.user_id,'session_id',a.session_id,'role','authenticated')::text,true);
+ j:=public.core_dispatch('join',jsonb_build_object('post_id',pb->>'id','expected_version',pb->'version'));
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',b.user_id,'session_id',b.session_id,'role','authenticated')::text,true);
+ perform public.core_dispatch('decide',jsonb_build_object('join_id',j->>'id','status','accepted'));
+ perform public.core_chat('send',jsonb_build_object('post_id',pb->>'id','content','保留者的訊息不可刪除','client_key','deletion-chat-keep'));
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',a.user_id,'session_id',a.session_id,'role','authenticated')::text,true);
+ perform public.core_chat('send',jsonb_build_object('post_id',pb->>'id','content','本人帳號刪除時清除','client_key','deletion-chat-remove'));
+ preview:=public.core_account_deletion('prepare');
+ assert preview->'counts'->>'owned_posts'='1';
+ begin perform public.core_account_deletion('begin',jsonb_build_object('confirmation','DELETE','challenge',repeat('x',43))); raise exception 'forged challenge accepted';
+ exception when sqlstate 'PT409' then null; end;
+ begin perform public.core_account_deletion('begin',jsonb_build_object('confirmation',true,'challenge',preview->>'challenge')); raise exception 'implicit consent accepted';
+ exception when sqlstate 'PT422' then null; end;
+ perform public.core_account_deletion('begin',jsonb_build_object('confirmation','DELETE','challenge',preview->>'challenge'));
+ assert (public.core_dispatch('me')->>'deletion_pending')::boolean;
+ begin perform public.core_dispatch('create',jsonb_build_object('request_key','deletion-no-new-post','value',input)); raise exception 'pending account wrote data';
+ exception when sqlstate 'PT409' then null; end;
+ assert public.core_account_deletion('finish')->>'deleted'='true';
+ begin perform public.core_dispatch('me'); raise exception 'deleted session still accepted';
+ exception when sqlstate 'PT401' then null; end;
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',b.user_id,'session_id',b.session_id,'role','authenticated')::text,true);
+ pb:=public.core_dispatch('post',jsonb_build_object('post_id',pb->>'id'));
+ assert pb->>'joined'='1' and pb->>'status'='open';
+ assert jsonb_array_length(public.core_chat('messages',jsonb_build_object('post_id',pb->>'id'))->'messages')=1;
+ assert not has_table_privilege('authenticated','core_private.account_deletion_jobs','SELECT');
+ assert not has_function_privilege('anon','public.core_account_deletion(text,jsonb)','EXECUTE');
+end $test$;
+reset role;
+do $verify$ begin
+ assert not exists(select 1 from auth.users where id=(select user_id from deletion_fixture where name='delete'));
+ assert exists(select 1 from auth.users where id=(select user_id from deletion_fixture where name='keep'));
+ assert not exists(select 1 from auth.sessions where user_id=(select user_id from deletion_fixture where name='delete'));
+end $verify$;
+rollback;

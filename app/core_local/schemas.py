@@ -47,6 +47,7 @@ class RegisterInput(LoginInput):
 
 
 class ProfileView(BaseModel):
+    deletion_pending: bool = False
     id: UUID
     email: str
     display_name: str
