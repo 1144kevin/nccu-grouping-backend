@@ -35,7 +35,7 @@ begin
    'tags',jsonb_build_array('開發示範',food[1+(i%8)],case when i%5=0 then '免費分享' else '一起拼單' end),
    'capacity',cap,'deadline_at',deadline,'price_per_person',case when i%5=0 then '0.00' else ((i%8)*15+45)::text end,
    'location',jsonb_build_object('name','【示範】'||places[1+(i%6)],'latitude',24.9876,
-    'longitude',121.5760,'source','manual'));
+    'longitude',121.5760));
   insert into public.core_posts(author_id,payload,deadline_at,capacity,cancelled,request_key,
    original_payload,created_at,demo_batch,demo_owner_id)
   values(host,value,deadline,cap,mode=1,batch_name||'-post-'||i,value,
