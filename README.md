@@ -2,7 +2,7 @@
 
 FastAPI backend，目前串接登入、拼單、文字聊天與偷揪雲端分身／需求／配對。本機 Qwen3.5 模型已支援自然語言理解及補問；手機推播仍屬後續工作。
 
-已新增可替換的需求理解、向量與候選判讀接口，以及免費本機 Qwen 語義排序。啟用方式、兩種資料模式的差異與評估案例見 [本機語義配對](docs/CORE_SUPABASE_DEV.md#本機語義配對與可替換-ai-接口)。Apple／OpenAI adapter、雲端向量索引與 App 的語義排序按鈕尚未整合；原有配對及全員確認流程保留。
+已新增可替換的需求理解、向量與候選判讀接口，以及免費本機 Qwen 語義排序。App 偷揪結果頁已接上手動語義排序與判讀，顯示理由及待確認事項。啟用方式、兩種資料模式的差異與評估案例見 [本機語義配對](docs/CORE_SUPABASE_DEV.md#本機語義配對與可替換-ai-接口)。Apple／OpenAI adapter 與雲端向量索引尚未整合；原有配對及全員確認流程保留。
 
 原 App 新增雲端個人偏好、規則推薦排序、個人聊天室封存／靜音、沒興趣／截止提醒、私人回報與分類搜尋。詳細操作與界線見 [Supabase 開發說明](docs/CORE_SUPABASE_DEV.md)；iPhone Google 回跳、離線 release 檢查與 Mac 接續步驟見 [iPhone／TestFlight](docs/IPHONE_TESTFLIGHT.md)。API 仍只在本機執行。
 

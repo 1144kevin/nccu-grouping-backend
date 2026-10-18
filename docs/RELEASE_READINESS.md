@@ -66,6 +66,6 @@ Mac setup／檢查、只含已提交歷史的 Git bundle 產生器、模擬器�
 
 ## 雲端後端準備更新
 
-本機 AI 更新：需求理解／向量／候選判讀三個可替換接口、Qwen 免費語義排序及固定合成評估已完成。12 題檢索 top-1 12/12，6 題判讀通過；仍需真人授權測試與更大盲測集。SQLite 支援語義優先建立配對；Supabase 開發模式僅排序合法既有摘要。App 語義排序 UI、雲端向量候選發現、Apple／OpenAI adapter 均未完成；不影響原配對、方案編輯與全員確認。詳細步驟見 CORE_SUPABASE_DEV.md 的「本機語義配對與可替換 AI 接口」。
+本機 AI 更新：需求理解／向量／候選判讀三個可替換接口、Qwen 免費語義排序及固定合成評估已完成。12 題檢索 top-1 12/12，6 題判讀通過；仍需真人授權測試與更大盲測集。SQLite 支援語義優先建立配對；Supabase 開發模式僅排序合法既有摘要。App 已接上手動語義排序、判讀理由與待確認事項，132 項前端測試及離線 Web export 通過；本次未再次登入真人帳號驗收。雲端向量候選發現、Apple／OpenAI adapter 仍未完成；不影響原配對、方案編輯與全員確認。詳細步驟見 CORE_SUPABASE_DEV.md 的「本機語義配對與可替換 AI 接口」。
 
 獨立cloud runner、檢查專用環境、嚴格TLS代理合約、精確CORS、單程序限流／body限制、無憑證健康probe、非root鎖檔容器設定與公開URL App profile匯出已完成。沒有部署、修改Supabase或實際build Docker。第一版限制單程序／單實例；保留原本local模式與本機模型，雲端只提供手動需求及免費規則草案。主機／TLS／代理實際驗收、Docker Linux build、操作備份與iPhone流程仍待後續。
