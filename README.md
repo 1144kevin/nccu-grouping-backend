@@ -59,3 +59,5 @@ uv run alembic history
 
 後續結構變更另增 migration 並審查 SQL。本機 SQLite 不需要雲端 migration。本輪僅在已指定的 Supabase 開發專案新增結構與示範資料；沒有部署。
 
+
+Mac／iPhone 最短交接指令、離線 Git bundle 與三種連線 profile 已整理於 [交接流程](docs/IPHONE_TESTFLIGHT.md)，實機結果請填 [驗收清單](docs/DEVICE_ACCEPTANCE.csv)。Windows 準備不代表已完成原生編譯或部署。

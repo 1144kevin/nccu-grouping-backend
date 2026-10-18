@@ -59,3 +59,7 @@
 [Expo SDK57](https://docs.expo.dev/versions/v57.0.0/) 與 [本機原生開發](https://docs.expo.dev/guides/local-app-development/) 是 Mac 建置接續依據。Windows export 只驗證 JavaScript／資源，不代替 Xcode 與裝置驗收。
 
 [Apple Login Services 4.8](https://developer.apple.com/app-store/review/guidelines/#login-services) 對第三方主要帳號登入的同等隱私登入選項有要求與例外；是否適用需按 App 的最終登入設計檢查，目前不宣稱已符合。
+
+## Windows 已完成的交接準備
+
+Mac setup／檢查、只含已提交歷史的 Git bundle 產生器、模擬器／內網TLS裝置／未來HTTPS雲端三種 App profile、預設關閉的限制裝置TLS runner、帳號設定連線狀態、未使用原生權限收斂已備妥。指令見 IPHONE_TESTFLIGHT.md，逐項紀錄見 DEVICE_ACCEPTANCE.csv。沒有新增部署、LAN監聽或系統憑證；Mac原生編譯、iPhone信任與連線、公開API runtime／部署、Apple登入、政策與治理仍待後續。
