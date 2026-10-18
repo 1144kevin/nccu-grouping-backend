@@ -1,0 +1,21 @@
+# Allowlist: no credentials, local databases, Git history, tests, media or migrations in images.
+**
+!Dockerfile
+!pyproject.toml
+!uv.lock
+!README.md
+!app/
+!app/**
+!scripts/
+!scripts/run_cloud_core.py
+**/__pycache__/**
+**/*.pyc
+**/.env
+**/.env.*
+**/.local/**
+**/.git/**
+**/*.pem
+**/*.key
+**/*.p8
+**/*.p12
+**/*.sqlite3
