@@ -15,10 +15,12 @@ from app.api.routes import (
     stealth,
     stealth_cloud,
     uploads,
+    user_blocks,
     users,
 )
 
 api_router = APIRouter()
+api_router.include_router(user_blocks.router)
 api_router.include_router(auth.router)
 api_router.include_router(engagement.router)
 api_router.include_router(demo.router)
