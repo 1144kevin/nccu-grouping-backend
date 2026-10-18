@@ -177,6 +177,29 @@ class PostPage(BaseModel):
     next_cursor: str | None = None
 
 
+class RecommendationReason(BaseModel):
+    code: Literal["preferred_tags", "preferred_location", "remaining_seats", "deadline"]
+    text: str = Field(min_length=1, max_length=160)
+
+
+class RecommendationInfo(BaseModel):
+    version: Literal["rules_v2"]
+    score: int = Field(ge=0, le=100, strict=True)
+    remaining_seats: int = Field(ge=1, le=19, strict=True)
+    as_of: datetime
+    reasons: list[RecommendationReason] = Field(min_length=1, max_length=4)
+
+
+class RecommendedPostView(PostView):
+    # Nullable while the reviewed development SQL upgrade has not been applied.
+    recommendation: RecommendationInfo | None = None
+
+
+class RecommendationPage(BaseModel):
+    items: list[RecommendedPostView]
+    next_cursor: str | None = None
+
+
 class JoinView(BaseModel):
     id: UUID
     post_id: UUID

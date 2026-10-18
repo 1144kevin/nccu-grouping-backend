@@ -161,6 +161,44 @@ def test_recommendations_are_authenticated_and_paginated(client):
     assert store._request.call_args.kwargs["body"] == {"args": {"limit": 12, "cursor": None}}
 
 
+def test_recommendation_reasons_survive_api_response_validation(client):
+    api, store = client
+    now = datetime.now(UTC).isoformat()
+    details = {
+        "version": "rules_v2",
+        "score": 40,
+        "remaining_seats": 1,
+        "as_of": now,
+        "reasons": [{"code": "remaining_seats", "text": "尚有 1 個名額"}],
+    }
+    post = {
+        "id": str(uuid4()),
+        "author_id": str(uuid4()),
+        "author_name": "隔離驗證",
+        "content": "隔離推薦理由的回應驗證，沒有真實訂單。",
+        "tags": ["驗證"],
+        "location": {"name": "虛構測試點", "latitude": 24.987, "longitude": 121.576},
+        "price_per_person": None,
+        "deadline_at": now,
+        "capacity": 3,
+        "joined": 2,
+        "status": "open",
+        "my_status": "none",
+        "created_at": now,
+        "recommendation": details,
+    }
+    store._request.return_value = {"items": [post], "next_cursor": None}
+    response = api.get("/api/v1/recommendations", headers=HEADERS)
+    assert response.status_code == 200
+    result = response.json()["items"][0]["recommendation"]
+    assert result["reasons"] == details["reasons"] and result["remaining_seats"] == 1
+    # Old development SQL remains compatible while the reviewed upgrade is pending.
+    post.pop("recommendation")
+    response = api.get("/api/v1/recommendations", headers=HEADERS)
+    assert response.status_code == 200
+    assert response.json()["items"][0]["recommendation"] is None
+
+
 def test_saved_posts_cannot_forge_owner_or_boolean(client):
     api, store = client
     for value in (

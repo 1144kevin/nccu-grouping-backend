@@ -2106,7 +2106,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PostPage"
+                  "$ref": "#/components/schemas/RecommendationPage"
                 }
               }
             }
@@ -5838,6 +5838,246 @@
           "active_posts"
         ],
         "title": "PublicProfileView"
+      },
+      "RecommendationInfo": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "const": "rules_v2",
+            "title": "Version"
+          },
+          "score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Score"
+          },
+          "remaining_seats": {
+            "type": "integer",
+            "maximum": 19.0,
+            "minimum": 1.0,
+            "title": "Remaining Seats"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationReason"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Reasons"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "score",
+          "remaining_seats",
+          "as_of",
+          "reasons"
+        ],
+        "title": "RecommendationInfo"
+      },
+      "RecommendationPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendedPostView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "RecommendationPage"
+      },
+      "RecommendationReason": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "preferred_tags",
+              "preferred_location",
+              "remaining_seats",
+              "deadline"
+            ],
+            "title": "Code"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "text"
+        ],
+        "title": "RecommendationReason"
+      },
+      "RecommendedPostView": {
+        "properties": {
+          "is_demo": {
+            "type": "boolean",
+            "title": "Is Demo",
+            "default": false
+          },
+          "image_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Id"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "author_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Author Id"
+          },
+          "author_name": {
+            "type": "string",
+            "title": "Author Name"
+          },
+          "author_badge": {
+            "type": "string",
+            "title": "Author Badge",
+            "default": "🍱"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "location": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "price_per_person": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Per Person"
+          },
+          "deadline_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Deadline At"
+          },
+          "capacity": {
+            "type": "integer",
+            "title": "Capacity"
+          },
+          "joined": {
+            "type": "integer",
+            "title": "Joined"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "full",
+              "expired",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "my_status": {
+            "type": "string",
+            "enum": [
+              "host",
+              "none",
+              "pending",
+              "accepted",
+              "rejected",
+              "cancelled"
+            ],
+            "title": "My Status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version",
+            "default": 1
+          },
+          "can_edit": {
+            "type": "boolean",
+            "title": "Can Edit",
+            "default": false
+          },
+          "recommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecommendationInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "author_id",
+          "author_name",
+          "content",
+          "tags",
+          "location",
+          "price_per_person",
+          "deadline_at",
+          "capacity",
+          "joined",
+          "status",
+          "my_status",
+          "created_at"
+        ],
+        "title": "RecommendedPostView"
       },
       "RefreshInput": {
         "properties": {
