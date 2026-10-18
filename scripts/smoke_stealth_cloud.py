@@ -78,7 +78,7 @@ select count(*) as remaining_fixture_accounts from auth.users
  where raw_app_meta_data->>'stealth_test_scope'='{scope}';
 """
     (STATE / "cleanup.sql").write_text(cleanup, encoding="utf-8")
-    print("Prepared three synthetic accounts, one isolated scope. Review .local/stealth-e2e SQL.")
+    print(f"Prepared three synthetic accounts, one isolated scope. Review SQL in {STATE}.")
 
 
 def run():
