@@ -26,6 +26,7 @@ def build_core_contract() -> dict:
                 "/api/v1/join-requests/",
                 "/api/v1/development/demo",
                 "/api/v1/development/clock",
+                "/api/v1/development/readiness",
                 "/api/v1/conversations",
                 "/api/v1/users/",
                 "/api/v1/notifications",
@@ -45,7 +46,8 @@ def build_core_contract() -> dict:
         "Stealth intake supports optional local-only structured model extraction and follow-up; "
         "matches include free deterministic cost/role drafts, editable final terms "
         "and atomic formation after unanimous versioned consent. "
-        "Requires loopback and ENVIRONMENT=local."
+        "Requires ENVIRONMENT=local, loopback by default; explicit device tests require direct "
+        "TLS, a private bind address and an exact client IP allowlist. Not a production adapter."
     )
     schema["servers"] = [{"url": "http://127.0.0.1:8000"}]
     return schema

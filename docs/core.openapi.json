@@ -3,9 +3,28 @@
   "info": {
     "title": "政缺一咖 API",
     "version": "0.1.0",
-    "description": "Local FastAPI login/grouping API with separate SQLite and Supabase development modes. Supabase mode supports email auth, Google web/native iOS PKCE, session refresh, group text chat with read receipts, request activity, public profiles, order history, scoped search, account preferences, private reports, saved post reminders, private verified post images, inbox archive/mute, scoped demo cleanup and database clock synchronization. Stealth intake supports optional local-only structured model extraction and follow-up; matches include free deterministic cost/role drafts, editable final terms and atomic formation after unanimous versioned consent. Requires loopback and ENVIRONMENT=local."
+    "description": "Local FastAPI login/grouping API with separate SQLite and Supabase development modes. Supabase mode supports email auth, Google web/native iOS PKCE, session refresh, group text chat with read receipts, request activity, public profiles, order history, scoped search, account preferences, private reports, saved post reminders, private verified post images, inbox archive/mute, scoped demo cleanup and database clock synchronization. Stealth intake supports optional local-only structured model extraction and follow-up; matches include free deterministic cost/role drafts, editable final terms and atomic formation after unanimous versioned consent. Requires ENVIRONMENT=local, loopback by default; explicit device tests require direct TLS, a private bind address and an exact client IP allowlist. Not a production adapter."
   },
   "paths": {
+    "/api/v1/development/readiness": {
+      "get": {
+        "tags": [
+          "development"
+        ],
+        "summary": "Readiness",
+        "operationId": "readiness_api_v1_development_readiness_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/account/blocks": {
       "get": {
         "tags": [

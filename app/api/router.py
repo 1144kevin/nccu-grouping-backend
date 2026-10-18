@@ -6,6 +6,7 @@ from app.api.routes import (
     auth,
     conversations,
     demo,
+    development,
     engagement,
     join_requests,
     notifications,
@@ -21,6 +22,7 @@ from app.api.routes import (
 )
 
 api_router = APIRouter()
+api_router.include_router(development.router)
 api_router.include_router(user_blocks.router)
 api_router.include_router(account_deletion.router)
 api_router.include_router(auth.router)

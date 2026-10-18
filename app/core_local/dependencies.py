@@ -10,6 +10,7 @@ from fastapi import Depends, HTTPException, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import get_settings
+from app.core.device_test import validate_device_settings
 from app.core_cloud.store import SupabaseCoreStore
 from app.core_local.schemas import ProfileView
 from app.core_local.store import CoreStore
@@ -29,8 +30,20 @@ def require_local_mode(request: Request) -> None:
         raise HTTPException(503, "core_local_adapter_disabled")
     if settings.core_local_enabled and settings.core_supabase_enabled:
         raise HTTPException(503, "core_adapter_mode_conflict")
-    if not request.client or request.client.host not in ("127.0.0.1", "::1", "testclient"):
-        raise HTTPException(403, "loopback_only")
+    loopback = request.client and request.client.host in ("127.0.0.1", "::1", "testclient")
+    if not loopback:
+        try:
+            validate_device_settings(settings)
+        except ValueError:
+            raise HTTPException(503, "invalid_device_test_configuration") from None
+        if (
+            not settings.core_device_test_enabled
+            or not request.client
+            or request.client.host not in settings.core_device_test_clients
+            or request.url.scheme != "https"
+            or request.url.hostname != settings.core_device_test_host
+        ):
+            raise HTTPException(403, "loopback_only")
     if any(
         key in request.headers
         for key in ("forwarded", "x-forwarded-for", "x-real-ip", "x-forwarded-host")

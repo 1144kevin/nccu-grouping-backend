@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     core_google_ios_enabled: bool = False
     core_media_enabled: bool = False
     core_media_signing_key: SecretStr = SecretStr("")
+    # Explicit opt-in for direct TLS on a private LAN; never enabled by the local runner.
+    core_device_test_enabled: bool = False
+    core_device_test_host: str = ""
+    core_device_test_clients: list[str] = []
 
     supabase_url: str = ""
     supabase_publishable_key: str = ""
