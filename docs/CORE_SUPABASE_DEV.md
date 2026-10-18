@@ -4,7 +4,36 @@
 
 Google 登入與本機回呼已加入，使用者已確認 Google 真實登入成功。設定參考見 [Google Cloud／OAuth 設定](GOOGLE_LOGIN_SETUP.md)。
 
+## 本輪新增：原 App 雲端功能
+
+- 發布頁可選一張 JPEG／PNG 附圖。圖片經後端驗證、縮小、移除 EXIF 後，與拼單在同一資料庫交易發布；失敗保留草稿，可直接重試且不重複建單。首頁與詳情重載後仍讀取雲端圖片。詳見下方「拼單附圖」。
+- 「帳號與隱私」可儲存個人通知偏好，使用版本號避免覆蓋另一個頁籤的修改。聊天／申請開關控制 App 內徽章；不隱藏申請紀錄，也不宣稱已啟用手機推播。
+- 「推薦偏好」可儲存最多24個餐點／地點標籤；首頁「依我的偏好」以明確標籤與地點比對排序仍進行中的拼單。這是規則排序，沒有冒充 AI 或保證成團。原本最新清單與搜尋保留。
+- 聊天室可個人封存、移回收件匣、靜音提示。這些是本人帳號設定，不刪訊息、不退出拼單、不影響其他人。封存／靜音群組不計入自己的未讀提示。
+- 首頁「沒興趣」與「截止提醒」改存本人雲端帳號，切換帳號不共用。截止提醒可在「拼單動態 → 我的截止提醒」查看，以資料庫時間判斷截止前30分鐘；只有 App 前景頁面更新，沒有鎖屏通知或背景 worker。
+- 幫助頁可實際送出問題回報、查自己的近期回報；貼文、公開個人資料與有權讀取的聊天訊息可檢舉。回報私下存入資料庫，只回覆「已收到，待查看」，不自動停權、刪內容，也尚未建立管理者處理介面。同內容重試沿用 key；每人每小時最多5筆。
+- 搜尋可切換貼文、公開使用者、自己的聊天室訊息、自己的已結束紀錄。後三類需2～80字、手動按搜尋；信箱不在搜尋範圍，私人訊息必須符合目前聊天室成員權限。退出後立即失去該群組的訊息搜尋權限。
+- App 進入背景／inactive 時暫停頁面輪詢與已讀提交；iPhone Google 原生回呼程式已加入但預設未啟用。詳見 [iPhone／TestFlight 準備](IPHONE_TESTFLIGHT.md)。
+
+新資料表：`core_account_preferences`、`core_inbox_preferences`、`core_saved_post_preferences`、`core_reports`。全部啟用 RLS 並禁止 client 直接存取；透過驗證當前 Auth session 的 RPC 操作，不使用 service-role key。`core_search` 與 `core_recommendation_feed` 只讀取符合範圍的資料。
+
+本機 AI 新增原句依據 `evidence`，可在 App 展開查看預算、每人費用、相對時間與角色來源。金額核對區分預算、整團總價、每人費用與人數；沒有相符來源就清空補問，不會四捨五入金額。免費與未知費用分開，明確接受的替代餐點會帶入表單。拒絕取餐不代表已回答所有角色問題；模型分類仍可能錯，必須人工檢查。
+
+固定合成評估集位於 `tests/fixtures/stealth_intake_eval.json`，可執行 `.venv\Scripts\python.exe scripts\evaluate_local_intake.py`，只把固定假資料送到本機 Ollama，不連 Supabase。20組真實本機推論通過19組，當時中位數21.12秒（含其他本機工作負載）；最新核對規則離線重播同一批結果仍為19組通過。尚未通過的 `explicit_pickup_plan` 會漏掉分類／取餐行程，需補充或手動填寫。這不是正式準確率或效能承諾，沒有隱藏失敗案例。完整合成結果留在忽略於 Git 的 `.local/evals/`。
+
+另新增 `tests/fixtures/stealth_intake_challenge.json` 十二組獨立反例，以 `--suite challenge` 執行。第一輪真實推論11/12，找到「希望有人願意取餐」誤判本人志願；後端新增完整原句上下文核對，包含引句外的要求別人／疑問／假設，清空模糊角色並補問。另明確拒絕未標示台幣的外幣金額，不自行換匯。相同提示／模型下重新真實推論12/12通過，中位數17.33秒；標準集舊輸出重播仍19/20。兩組是有限合成案例，不合併宣稱一般準確率。這些核對不取代語義理解或全員親自同意，分類／原句仍可能漏掉。
+
+本輪另實際驗證三個隔離身份：同版三人確認才建立一筆拼單與聊天室，改版清除舊同意，重送不重複；兩份申請同時搶最後名額只接受一人，退出可釋出名額；同 key 的同時發布與聊天只建立一筆；三次同時退出／審核都沒有超收或資料庫錯誤。模型補問與「套用到表單」後，資料庫仍只有原本那三筆隔離需求，未額外寫入。
+
+本輪三個臨時 Auth 身份、sessions／refresh tokens、六筆隔離拼單、私人回報／偏好、需求與配對及本機測試憑證檔已清除。資料庫恢復七筆示範拼單、三則示範訊息、三筆示範偷揪需求、五筆原有 Auth／profile，沒有本輪測試身份。畫面證據留於 `.local/core-evidence/four-hour-*.png`；截圖中的隔離資料已移除。
+
+測試這些功能時，可用自己的 Google 開發帳號從 Drawer 進入各頁。先儲存偏好、重新整理確認仍保留，再換另一帳號查看是否隔離。對示範拼單設定提醒或沒興趣只改自己的設定；不要把測試檢舉當成真實處置結果。這輪自動驗證另用三個隔離假帳號，測後會清除，不使用既有 Google 使用者的 session。
+
 ## 啟動
+
+本輪最終驗證：後端317項、前端111項測試通過；Ruff、TypeScript、ESLint、兩項 release 設定測試通過；Web／iOS JavaScript 與資源離線匯出成功。後端有兩項既有依賴 deprecation warnings。前端冷快取第一次有5秒 timeout，暖快取與明確15秒上限完整重跑皆通過；未刪除或跳過斷言。這些不是實機／簽章／TestFlight 測試。
+
+可重跑後端 `.venv\Scripts\python.exe -m pytest -o addopts="" -q --basetemp=.local/pytest-manual-01 -o cache_dir=.local/pytest-cache`（每輪改用新的 basetemp 名稱）；前端 `npm test -- --runInBand --cacheDirectory=.local/jest --testTimeout=15000`、`npm run typecheck`、`npm run lint`、`npm run test:release-config`、`npm run ios:preflight`。SQL smoke 檔僅供指定開發專案的隔離交易驗證，請勿一鍵重跑所有 migration。
 
 開兩個 CMD 視窗，保持開啟。若之前的本機模式還在跑，先在它的服務視窗按 Ctrl+C。
 
@@ -24,7 +53,20 @@ npm run dev:supabase
 
 開啟 `http://localhost:8081`。登入頁應顯示「登入 Supabase 開發帳號」，登入後頂端應顯示「Supabase 開發版」。本機 SQLite 帳號與雲端帳號不同，舊的本機密碼不能直接登入雲端；這次沒有搬移 SQLite 測試資料。
 
-後端讀取忽略於 Git 的 `.local/supabase-dev.env`，只需要這個開發專案的 URL 與 Publishable key。設定已放好。程式拒絕其他專案 URL、secret/service-role key，以及同時啟用 SQLite 與 Supabase 模式。MCP Token 不參與 App 執行。
+後端讀取忽略於 Git 的 `.local/supabase-dev.env`，帳號／拼單只需要這個開發專案的 URL 與 Publishable key。圖片另外讀取 `.local/media-signing.env` 中的私人後端驗證金鑰，目前本機已設定，不能貼到對話、前端或 Git。它只驗證圖片，不具 Supabase 管理權。程式拒絕其他專案 URL、secret/service-role key，以及同時啟用 SQLite 與 Supabase 模式。MCP Token 不參與 App 執行。
+
+## 拼單附圖
+
+1. 發布頁選一張圖片、填寫內容／地點／截止時間，再發布。預覽只在本機；發布才傳到指定開發專案。原本純文字拼單仍可使用。
+2. 只接受靜態 JPEG／PNG，原檔最多4 MiB、1600萬像素。後端依 EXIF 方向旋轉，縮到最長邊1600像素，再畫到全新 RGB 畫布，移除 EXIF／GPS／註解／ICC／原檔名，輸出最多2 MiB JPEG。不接收外部圖片網址或檔案路徑。iPhone 選圖的 HEIC 轉換仍須實機驗證；後端不直接解碼 HEIC。
+3. `core-post-images` 是私人儲存桶。未發布副本只有本人可讀；發布後所有已登入 App 使用者可讀附圖。短效簽署網址60秒內可供持有連結者讀取，因此請勿轉貼。畫面只使用記憶體圖片快取，不把網址當公開永久連結。
+4. 後端讀回實際 Storage 檔案核對 SHA256，以獨立 HMAC 金鑰綁定使用者、圖片、內容 hash 與 Storage object ID，資料庫才接受 ready 狀態。直接上傳 Storage 或偽造 ready 請求不能繞過圖片處理。資料表禁止 client 直接讀寫；Storage 使用當前使用者 JWT 與 RLS，不使用管理金鑰。
+5. 開發版限制每帳號20份、整專案100份圖片預留，含已發布與未發布。每檔最多2 MiB，因此邏輯儲存上限約200 MiB；這不是費用保證或正式可擴充配額。達限需清理未發布副本或另規劃已發布媒體生命週期，不自動升級方案。
+6. 離開發文頁可能留下未發布雲端副本。到「帳號與隱私 → 未發佈的圖片副本」兩步確認清理，只刪上傳副本，不刪手機原圖。已發布圖片暫不支援更換／移除，也不支援聊天附圖、多圖、語音上傳或 AI 看圖。
+
+已套用 `core_media.sql`，新增 `core_media_assets`、`core_post_images`、私人驗證金鑰表與私人 Storage bucket；既有文字發布 RPC 保留，只擴充貼文讀取的 `image_id`。`core_media_smoke.sql` 在交易中驗證圖片預留重試、每人配額、身份隔離與失效 session，最後 rollback，不建立真正檔案。
+
+另外以兩個隔離合成帳號實測 API 上傳／實際檔案讀回、EXIF 移除、偽造驗證拒絕、未發布存取拒絕、重複發布只建一筆、已發布檔案禁止刪除；瀏覽器也實際選擇合成圖片發布，重整首頁與詳情確認存在。兩個測試帳號、兩筆拼單、所有測試 blobs／預留／session 均已清除；保留原有七筆拼單、三則訊息、三筆偷揪需求、五筆帳號與 profile。證據 `.local/core-evidence/four-hour-image-*.png` 的資料已移除。
 
 ## 測試登入與拼單
 
@@ -39,7 +81,7 @@ npm run dev:supabase
 
 雲端頁面的註冊必須使用真實可收信信箱，不能填 `kevin@example.test` 等虛構地址。Supabase 會回傳 `email_address_invalid`；這不是後端服務沒有啟動。先用 Supabase 組織成員的真實信箱及另一組 App 測試密碼註冊；若回傳不允許寄信，需處理 SMTP，或先使用管理員建立的已驗證測試帳號。
 
-已加入 refresh token 自動續期；有效登入請求收到 401 才續期，並共用一次續期處理，避免多個請求同時輪替憑證。暫時斷線不清除登入憑證，登出或切換帳號後的舊續期結果不能覆蓋新狀態。SQLite 模式不使用雲端續期。已串接文字聊天室與申請動態；付款、媒體上傳與手機推播尚未整合。偷揪新增使用同一套雲端身份的 adapter，原本地端原型繼續保留，兩者不共用 SQLite 資料。
+已加入 refresh token 自動續期；有效登入請求收到 401 才續期，並共用一次續期處理，避免多個請求同時輪替憑證。暫時斷線不清除登入憑證，登出或切換帳號後的舊續期結果不能覆蓋新狀態。SQLite 模式不使用雲端續期。已串接文字聊天室與申請動態；付款、語音上傳與手機推播尚未整合。偷揪新增使用同一套雲端身份的 adapter，原本地端原型繼續保留，兩者不共用 SQLite 資料。
 
 舊版登入只保存 access token；**更新後請自行登出，再用 Google 登入一次**，才會保存完整續期憑證。Web 保存在該頁籤的 sessionStorage，原生端使用 SecureStore；不放在網址、localStorage 或 Git。重新整理可保留登入，關閉頁籤後需重新登入。
 
@@ -83,6 +125,12 @@ npm run dev:supabase
 | 公開個人頁 | `GET /users/{id}`、`GET /users/{id}/posts` | 公開欄位與指定 UUID 的拼單 |
 | 發布／編輯時間基準 | `GET /development/clock` | 資料庫時鐘 |
 | 個人示範資料清理 | `DELETE /development/demo` | 私有批次清單與示範標記 |
+| 通知及推薦偏好 | `GET/PUT /account/preferences` | `core_account_preferences` |
+| 個人聊天室封存與靜音 | `GET /account/inbox`、`PUT /account/inbox/{id}` | `core_inbox_preferences` |
+| 沒興趣及 App 內截止提醒 | `GET /account/saved-posts`、`PUT /account/saved-posts/{id}` | `core_saved_post_preferences` |
+| 私人回報 | `GET/POST /reports` | `core_reports` |
+| 明確偏好排序 | `GET /recommendations` | 本人偏好與進行中的公開拼單 |
+| 公開人物／私人訊息／自己的結束紀錄 | `GET /search?scope=users\|messages\|history&q=...` | 公開 profile 或目前有權查看的資料 |
 
 完整欄位與錯誤格式見 [core.openapi.json](core.openapi.json)。分頁使用伺服器提供的 cursor，不能用目前畫面最後一筆的裝置時間自行組合。發布與聊天送出使用 Idempotency-Key；修改拼單使用版本號避免覆蓋別人的變更。
 

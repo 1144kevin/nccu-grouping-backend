@@ -2,6 +2,8 @@
 
 FastAPI backend，目前串接登入、拼單、文字聊天與偷揪雲端分身／需求／配對。本機 Qwen3.5 模型已支援自然語言理解及補問；手機推播仍屬後續工作。
 
+原 App 新增雲端個人偏好、規則推薦排序、個人聊天室封存／靜音、沒興趣／截止提醒、私人回報與分類搜尋。詳細操作與界線見 [Supabase 開發說明](docs/CORE_SUPABASE_DEV.md)；iPhone Google 回跳、離線 release 檢查與 Mac 接續步驟見 [iPhone／TestFlight](docs/IPHONE_TESTFLIGHT.md)。API 仍只在本機執行。
+
 新增「偷揪」本機原型：請見 [功能與兩週計畫](docs/STEALTH_PLAN.md)、[本機驗證方式](docs/STEALTH_LOCAL.md) 與 [工作紀錄](docs/STEALTH_PROGRESS.md)。模組預設關閉，沒有取代既有功能。
 
 離線 SQLite 模式也保留信箱／密碼登入、主揪審核、退出釋出名額及前端串接。需要離線開發時可依 [SQLite 本機啟動與測試](docs/CORE_LOCAL.md) 操作；此獨立模式不連雲端、不寄信。延續目前進度請使用下方 Supabase 開發專案模式。
@@ -12,11 +14,14 @@ FastAPI backend，目前串接登入、拼單、文字聊天與偷揪雲端分�
 
 ## 技術與後續規劃
 
+本輪已完成項目、仍缺功能及 Mac／iPhone 驗收表整理於 [開發交付與發行準備](docs/RELEASE_READINESS.md)。目前改動仍在原分支工作目錄，尚未 commit／push；TestFlight 尚未建置或上傳。
+
 - FastAPI + Pydantic
 - SQLAlchemy async + asyncpg、Alembic：既有資料層與部署規劃；目前 `core_*` 雲端流程使用 Supabase 交易 RPC
 - Supabase PostgreSQL + Auth；核心寫入使用受限交易 RPC
 - SQLite：離線開發與獨立偷揪原型
-- Storage、Realtime、pgvector、AI 雲端呼叫與手機推播屬後續整合項目
+- Supabase 私人 Storage：單張拼單附圖，後端縮圖／移除 EXIF，再驗證發布
+- Realtime、pgvector、AI 雲端呼叫與手機推播屬後續整合項目
 
 ## 本機啟動
 

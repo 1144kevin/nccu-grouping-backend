@@ -3,7 +3,7 @@
   "info": {
     "title": "政缺一咖 API",
     "version": "0.1.0",
-    "description": "Local FastAPI login/grouping API with separate SQLite and Supabase development modes. Supabase mode supports email auth, Google web PKCE, session refresh, group text chat with read receipts, request activity, public profiles, order history, scoped demo cleanup and database clock synchronization. Stealth intake supports optional local-only structured model extraction and follow-up; matches include free deterministic cost/role drafts, editable final terms and atomic formation after unanimous versioned consent. Requires loopback and ENVIRONMENT=local."
+    "description": "Local FastAPI login/grouping API with separate SQLite and Supabase development modes. Supabase mode supports email auth, Google web/native iOS PKCE, session refresh, group text chat with read receipts, request activity, public profiles, order history, scoped search, account preferences, private reports, saved post reminders, private verified post images, inbox archive/mute, scoped demo cleanup and database clock synchronization. Stealth intake supports optional local-only structured model extraction and follow-up; matches include free deterministic cost/role drafts, editable final terms and atomic formation after unanimous versioned consent. Requires loopback and ENVIRONMENT=local."
   },
   "paths": {
     "/api/v1/auth/refresh": {
@@ -54,6 +54,23 @@
         ],
         "summary": "Google Start",
         "operationId": "google_start_api_v1_auth_google_start_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/GoogleStartInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Value"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -61,6 +78,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GoogleStartView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -286,6 +313,244 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/api/v1/account/preferences": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Preferences",
+        "operationId": "preferences_api_v1_account_preferences_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferencesView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Save Preferences",
+        "operationId": "save_preferences_api_v1_account_preferences_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferencesUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferencesView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account/inbox": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Inbox",
+        "operationId": "inbox_api_v1_account_inbox_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxPreferences"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account/inbox/{post_id}": {
+      "put": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Save Inbox",
+        "operationId": "save_inbox_api_v1_account_inbox__post_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Post Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InboxInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxPreference"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/saved-posts": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Saved Posts",
+        "operationId": "saved_posts_api_v1_account_saved_posts_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedPostPreferences"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account/saved-posts/{post_id}": {
+      "put": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Save Post Preference",
+        "operationId": "save_post_preference_api_v1_account_saved_posts__post_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Post Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedPostInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedPostPreference"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/development/demo": {
@@ -1354,6 +1619,495 @@
         }
       }
     },
+    "/api/v1/uploads/images": {
+      "post": {
+        "tags": [
+          "uploads"
+        ],
+        "summary": "Upload Image",
+        "operationId": "upload_image_api_v1_uploads_images_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 12,
+              "maxLength": 100,
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "content_base64": {
+                    "maxLength": 5592408,
+                    "minLength": 1,
+                    "title": "Content Base64",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "content_base64"
+                ],
+                "title": "ImageUpload",
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "uploads"
+        ],
+        "summary": "Draft Images",
+        "operationId": "draft_images_api_v1_uploads_images_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftAssets"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/uploads/publish": {
+      "post": {
+        "tags": [
+          "uploads"
+        ],
+        "summary": "Publish With Image",
+        "operationId": "publish_with_image_api_v1_uploads_publish_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 12,
+              "maxLength": 100,
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImagePublish"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/uploads/images/{image_id}": {
+      "get": {
+        "tags": [
+          "uploads"
+        ],
+        "summary": "Image Url",
+        "operationId": "image_url_api_v1_uploads_images__image_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "image_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Image Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageURL"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "uploads"
+        ],
+        "summary": "Delete Draft Image",
+        "operationId": "delete_draft_image_api_v1_uploads_images__image_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "image_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Image Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/recommendations": {
+      "get": {
+        "tags": [
+          "recommendations"
+        ],
+        "summary": "Recommendations",
+        "operationId": "recommendations_api_v1_recommendations_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 30,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Reports",
+        "operationId": "reports_api_v1_reports_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportPage"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Create Report",
+        "operationId": "create_report_api_v1_reports_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 12,
+              "maxLength": 100,
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/search": {
+      "get": {
+        "tags": [
+          "search"
+        ],
+        "summary": "Search",
+        "operationId": "search_api_v1_search_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "users",
+                "messages",
+                "history"
+              ],
+              "type": "string",
+              "title": "Scope"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 80,
+              "title": "Q"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 30,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 700
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stealth-cloud/agent": {
       "get": {
         "tags": [
@@ -1904,6 +2658,26 @@
   },
   "components": {
     "schemas": {
+      "AccountPreferences": {
+        "properties": {
+          "notifications": {
+            "$ref": "#/components/schemas/NotificationPreferences"
+          },
+          "preferred_tags": {
+            "items": {
+              "type": "string",
+              "maxLength": 32,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 24,
+            "title": "Preferred Tags"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AccountPreferences"
+      },
       "AgentTermsDraft": {
         "properties": {
           "provider": {
@@ -2037,6 +2811,43 @@
           "ready_to_submit"
         ],
         "title": "AgentTermsDraft"
+      },
+      "AssetView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "width": {
+            "type": "integer",
+            "maximum": 1600.0,
+            "minimum": 1.0,
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "maximum": 1600.0,
+            "minimum": 1.0,
+            "title": "Height"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready"
+            ],
+            "title": "State"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "width",
+          "height",
+          "state"
+        ],
+        "title": "AssetView"
       },
       "ChatActivity": {
         "properties": {
@@ -2989,6 +3800,65 @@
         ],
         "title": "DemoCleanupView"
       },
+      "DraftAsset": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "width": {
+            "type": "integer",
+            "maximum": 1600.0,
+            "minimum": 1.0,
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "maximum": 1600.0,
+            "minimum": 1.0,
+            "title": "Height"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready"
+            ],
+            "title": "State"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "width",
+          "height",
+          "state",
+          "created_at"
+        ],
+        "title": "DraftAsset"
+      },
+      "DraftAssets": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DraftAsset"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "DraftAssets"
+      },
       "DraftInput": {
         "properties": {
           "text": {
@@ -3157,6 +4027,22 @@
         ],
         "title": "GoogleFinishInput"
       },
+      "GoogleStartInput": {
+        "properties": {
+          "client": {
+            "type": "string",
+            "enum": [
+              "web",
+              "ios"
+            ],
+            "title": "Client",
+            "default": "web"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "GoogleStartInput"
+      },
       "GoogleStartView": {
         "properties": {
           "authorize_url": {
@@ -3193,6 +4079,187 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "ImagePublish": {
+        "properties": {
+          "image_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Image Id"
+          },
+          "value": {
+            "$ref": "#/components/schemas/PostInput"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "image_id",
+          "value"
+        ],
+        "title": "ImagePublish"
+      },
+      "ImageURL": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In",
+            "default": 60
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "width",
+          "height"
+        ],
+        "title": "ImageURL"
+      },
+      "InboxInput": {
+        "properties": {
+          "muted": {
+            "type": "boolean",
+            "title": "Muted"
+          },
+          "archived": {
+            "type": "boolean",
+            "title": "Archived"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "muted",
+          "archived"
+        ],
+        "title": "InboxInput"
+      },
+      "InboxPreference": {
+        "properties": {
+          "muted": {
+            "type": "boolean",
+            "title": "Muted"
+          },
+          "archived": {
+            "type": "boolean",
+            "title": "Archived"
+          },
+          "post_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Post Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "muted",
+          "archived",
+          "post_id"
+        ],
+        "title": "InboxPreference"
+      },
+      "InboxPreferences": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InboxPreference"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "InboxPreferences"
+      },
+      "IntakeEvidence": {
+        "properties": {
+          "budget": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration"
+          },
+          "roles": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roles"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "IntakeEvidence"
+      },
       "IntakeFacts": {
         "properties": {
           "title": {
@@ -3228,6 +4295,21 @@
               }
             ],
             "title": "Category"
+          },
+          "acceptable_categories": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "pizza",
+                "meal",
+                "drink",
+                "bakery",
+                "snack"
+              ]
+            },
+            "type": "array",
+            "maxItems": 4,
+            "title": "Acceptable Categories"
           },
           "location_id": {
             "anyOf": [
@@ -3303,6 +4385,11 @@
             ],
             "title": "Known Cost Twd"
           },
+          "cost_needs_clarification": {
+            "type": "boolean",
+            "title": "Cost Needs Clarification",
+            "default": false
+          },
           "roles": {
             "items": {
               "type": "string",
@@ -3341,6 +4428,9 @@
             "type": "array",
             "maxItems": 12,
             "title": "Dietary Requirements"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/IntakeEvidence"
           }
         },
         "additionalProperties": false,
@@ -3687,6 +4777,38 @@
         ],
         "title": "MessageView"
       },
+      "NotificationPreferences": {
+        "properties": {
+          "joinRequests": {
+            "type": "boolean",
+            "title": "Joinrequests",
+            "default": true
+          },
+          "messages": {
+            "type": "boolean",
+            "title": "Messages",
+            "default": true
+          },
+          "recommendations": {
+            "type": "boolean",
+            "title": "Recommendations",
+            "default": false
+          },
+          "deadlineReminders": {
+            "type": "boolean",
+            "title": "Deadlinereminders",
+            "default": false
+          },
+          "stealthInvites": {
+            "type": "boolean",
+            "title": "Stealthinvites",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "NotificationPreferences"
+      },
       "OrderActivityPage": {
         "properties": {
           "items": {
@@ -3946,6 +5068,18 @@
             "title": "Is Demo",
             "default": false
           },
+          "image_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Id"
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -4059,6 +5193,54 @@
           "created_at"
         ],
         "title": "PostView"
+      },
+      "PreferencesUpdate": {
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "maximum": 2147483646.0,
+            "minimum": 0.0,
+            "title": "Expected Version"
+          },
+          "value": {
+            "$ref": "#/components/schemas/AccountPreferences"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_version",
+          "value"
+        ],
+        "title": "PreferencesUpdate"
+      },
+      "PreferencesView": {
+        "properties": {
+          "notifications": {
+            "$ref": "#/components/schemas/NotificationPreferences"
+          },
+          "preferred_tags": {
+            "items": {
+              "type": "string",
+              "maxLength": 32,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 24,
+            "title": "Preferred Tags"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "title": "PreferencesView"
       },
       "ProfileInput": {
         "properties": {
@@ -4257,6 +5439,177 @@
         ],
         "title": "RegisterInput"
       },
+      "ReportInput": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "feedback",
+              "post",
+              "message",
+              "user"
+            ],
+            "title": "Kind"
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "other",
+              "spam",
+              "harassment",
+              "inappropriate",
+              "fraud"
+            ],
+            "title": "Reason",
+            "default": "other"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 10,
+            "title": "Detail"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "web",
+              "ios",
+              "android",
+              "unknown"
+            ],
+            "title": "Platform",
+            "default": "unknown"
+          },
+          "app_version": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "App Version",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "detail"
+        ],
+        "title": "ReportInput"
+      },
+      "ReportPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReportView"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ReportPage"
+      },
+      "ReportView": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "feedback",
+              "post",
+              "message",
+              "user"
+            ],
+            "title": "Kind"
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "other",
+              "spam",
+              "harassment",
+              "inappropriate",
+              "fraud"
+            ],
+            "title": "Reason",
+            "default": "other"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 10,
+            "title": "Detail"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "web",
+              "ios",
+              "android",
+              "unknown"
+            ],
+            "title": "Platform",
+            "default": "unknown"
+          },
+          "app_version": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "App Version",
+            "default": ""
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "const": "received",
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "detail",
+          "id",
+          "status",
+          "created_at"
+        ],
+        "title": "ReportView"
+      },
       "RoleSuggestion": {
         "properties": {
           "role": {
@@ -4298,6 +5651,174 @@
           "reason"
         ],
         "title": "RoleSuggestion"
+      },
+      "SavedPostInput": {
+        "properties": {
+          "hidden": {
+            "type": "boolean",
+            "title": "Hidden"
+          },
+          "reminder": {
+            "type": "boolean",
+            "title": "Reminder"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "hidden",
+          "reminder"
+        ],
+        "title": "SavedPostInput"
+      },
+      "SavedPostPreference": {
+        "properties": {
+          "hidden": {
+            "type": "boolean",
+            "title": "Hidden"
+          },
+          "reminder": {
+            "type": "boolean",
+            "title": "Reminder"
+          },
+          "post_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Post Id"
+          },
+          "reminder_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Reminder At"
+          },
+          "deadline_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Deadline At"
+          },
+          "post_content": {
+            "type": "string",
+            "title": "Post Content"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "due",
+              "expired",
+              "cancelled"
+            ],
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "hidden",
+          "reminder",
+          "post_id",
+          "reminder_at",
+          "deadline_at",
+          "post_content",
+          "status"
+        ],
+        "title": "SavedPostPreference"
+      },
+      "SavedPostPreferences": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SavedPostPreference"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "SavedPostPreferences"
+      },
+      "SearchItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "user",
+              "message",
+              "history"
+            ],
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "post_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Post Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "detail",
+          "created_at"
+        ],
+        "title": "SearchItem"
+      },
+      "SearchPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SearchItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "SearchPage"
       },
       "ServerClockView": {
         "properties": {
