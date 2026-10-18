@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.core.config import get_settings
-from app.core_cloud.google import CALLBACK_URL, GoogleFinishInput, GoogleFlows
+from app.core_cloud.google import CALLBACK_URL, IOS_CALLBACK_URL, GoogleFinishInput, GoogleFlows
 from app.core_cloud.store import SupabaseCoreStore
 from app.core_local import dependencies
 from app.main import app
@@ -56,6 +56,50 @@ def test_disabled_or_malformed_google_provider_does_not_start_flow(settings):
     with pytest.raises(HTTPException) as failed:
         GoogleFlows().start(store)
     assert failed.value.detail == "google_login_not_configured"
+
+
+def test_ios_pkce_uses_only_fixed_native_redirect():
+    started = GoogleFlows().start(configured_store(), client="ios")
+    assert parse_qs(urlsplit(started.authorize_url).query)["redirect_to"] == [IOS_CALLBACK_URL]
+
+
+def test_api_ios_oauth_requires_explicit_opt_in_and_rejects_redirect(monkeypatch):
+    monkeypatch.setenv("CORE_SUPABASE_ENABLED", "true")
+    monkeypatch.setenv("CORE_LOCAL_ENABLED", "false")
+    monkeypatch.setenv("CORE_GOOGLE_IOS_ENABLED", "false")
+    monkeypatch.setenv("ENVIRONMENT", "local")
+    get_settings.cache_clear()
+    store = configured_store()
+    app.dependency_overrides[dependencies.get_store] = lambda: store
+    dependencies._attempts.clear()
+    try:
+        with TestClient(app) as client:
+            response = client.post("/api/v1/auth/google/start", json={"client": "ios"})
+            assert (
+                response.status_code == 503
+                and response.json()["detail"] == "google_ios_not_configured"
+            )
+            assert response.headers["cache-control"] == "no-store"
+            assert (
+                client.post(
+                    "/api/v1/auth/google/start",
+                    json={"client": "ios", "redirect_to": "https://evil.invalid"},
+                ).status_code
+                == 422
+            )
+            store._request.assert_not_called()
+            monkeypatch.setenv("CORE_GOOGLE_IOS_ENABLED", "true")
+            get_settings.cache_clear()
+            enabled = client.post("/api/v1/auth/google/start", json={"client": "ios"})
+            assert (
+                enabled.status_code == 200
+                and IOS_CALLBACK_URL
+                in parse_qs(urlsplit(enabled.json()["authorize_url"]).query)["redirect_to"]
+            )
+    finally:
+        app.dependency_overrides.pop(dependencies.get_store, None)
+        get_settings.cache_clear()
+        dependencies._attempts.clear()
 
 
 def test_expired_and_unknown_flows_never_exchange_codes(monkeypatch):

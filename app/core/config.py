@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     core_local_enabled: bool = False
     core_local_db_path: str = ".local/core.sqlite3"
     core_supabase_enabled: bool = False
+    # Enable only after adding the exact native callback to the development Auth allowlist.
+    core_google_ios_enabled: bool = False
 
     supabase_url: str = ""
     supabase_publishable_key: str = ""

@@ -15,7 +15,7 @@ def main() -> None:
     from dotenv import dotenv_values
 
     config = dotenv_values(ROOT / ".local" / "supabase-dev.env")
-    for name in ("SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY"):
+    for name in ("SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "CORE_GOOGLE_IOS_ENABLED"):
         if config.get(name):
             os.environ[name] = config[name]
     local_ai = dotenv_values(ROOT / ".local" / "local-ai.env")

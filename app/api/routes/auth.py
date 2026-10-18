@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 
-from app.core_cloud.google import GoogleFinishInput, GoogleStartView, google_flows
+from app.core.config import get_settings
+from app.core_cloud.google import GoogleFinishInput, GoogleStartInput, GoogleStartView, google_flows
 from app.core_cloud.store import SupabaseCoreStore
 from app.core_local.dependencies import StoreDep, TokenDep, UserDep, auth_rate_limit
 from app.core_local.schemas import (
@@ -27,10 +28,16 @@ def refresh(value: RefreshInput, store: StoreDep, response: Response) -> Session
 @router.post(
     "/google/start", response_model=GoogleStartView, dependencies=[Depends(auth_rate_limit)]
 )
-def google_start(store: StoreDep) -> GoogleStartView:
+def google_start(
+    store: StoreDep, response: Response, value: GoogleStartInput | None = None
+) -> GoogleStartView:
+    response.headers["Cache-Control"] = "no-store"
     if not isinstance(store, SupabaseCoreStore):
         raise HTTPException(503, "google_login_requires_supabase")
-    return google_flows.start(store)
+    client = value.client if value else "web"
+    if client == "ios" and not get_settings().core_google_ios_enabled:
+        raise HTTPException(503, "google_ios_not_configured", headers={"Cache-Control": "no-store"})
+    return google_flows.start(store, client=client)
 
 
 @router.post("/google/finish", response_model=SessionView, dependencies=[Depends(auth_rate_limit)])
