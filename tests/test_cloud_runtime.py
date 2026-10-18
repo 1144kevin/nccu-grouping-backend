@@ -54,6 +54,7 @@ def headers(**changes):
         {"cloud_workers": 2},
         {"cloud_instances": 2},
         {"stealth_ai_provider": "ollama_local"},
+        {"stealth_semantic_enabled": True},
         {"openai_api_key": "synthetic-secret"},
         {"supabase_service_role_key": "synthetic-secret"},
         {"core_supabase_enabled": False},

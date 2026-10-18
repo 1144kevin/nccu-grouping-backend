@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Response
 from pydantic import Field, field_validator
 
 from app.core.config import get_settings
-from app.core_cloud.intake import IntakeRequest, IntakeResult, interpret
+from app.core_cloud.intake import IntakeRequest, IntakeResult
+from app.core_cloud.semantic import SemanticCloudMatches, SemanticRequest, semantic_cloud_matches
 from app.core_cloud.stealth import (
     CloudAgent,
     CloudAgentInput,
@@ -21,7 +22,9 @@ from app.core_cloud.stealth import (
 from app.core_cloud.store import SupabaseCoreStore
 from app.core_local.dependencies import StoreDep, UserDep
 from app.stealth.ai import OfflineDraftProvider
+from app.stealth.local_providers import OllamaIntentInterpreter
 from app.stealth.ollama import LocalModelError, OllamaDraftProvider
+from app.stealth.provider_registry import local_semantic_matcher
 from app.stealth.schemas import (
     DraftInput,
     DraftOutput,
@@ -68,13 +71,12 @@ def intake(value: IntakeRequest, _: Cloud):
     if settings.environment != "local" or settings.stealth_ai_provider != "ollama_local":
         raise HTTPException(503, "local_model_not_configured")
     try:
-        return interpret(
-            value,
+        return OllamaIntentInterpreter(
             OllamaDraftProvider(
                 settings.stealth_ollama_model,
                 local_only_confirmed=settings.stealth_ollama_local_only_confirmed,
-            ),
-        )
+            )
+        ).interpret(value)
     except LocalModelError as exc:
         raise HTTPException(503, str(exc)) from exc
 
@@ -106,6 +108,12 @@ def run(value: MatchRunInput, service: Cloud):
 @router.get("/matches", response_model=CloudMatches)
 def matches(service: Cloud):
     return service.matches()
+
+
+@router.post("/matches/semantic", response_model=SemanticCloudMatches)
+def semantic_matches(value: SemanticRequest, service: Cloud):
+    matcher = local_semantic_matcher(service.store.settings)
+    return semantic_cloud_matches(service, matcher, value.review_limit)
 
 
 @router.post("/matches/{proposal_id}/decision", response_model=CloudMatch)

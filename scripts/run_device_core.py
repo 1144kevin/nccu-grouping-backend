@@ -39,6 +39,7 @@ def main():
             "API_V1_PREFIX": "/api/v1",
             "BACKEND_CORS_ORIGINS": '["http://localhost:8081","http://127.0.0.1:8081"]',
             "STEALTH_AI_PROVIDER": "offline_rules",
+            "STEALTH_SEMANTIC_ENABLED": "false",
             "CORE_MEDIA_ENABLED": "false",
         }
     )

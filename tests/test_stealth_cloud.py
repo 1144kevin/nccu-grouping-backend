@@ -54,8 +54,19 @@ def test_intake_requires_auth_and_explicit_local_configuration_without_writing(c
     store._request.assert_not_called()
 
 
+def test_semantic_requires_auth_and_local_opt_in_before_any_database_call(cloud_api):
+    from app.core.config import Settings
+
+    client, store, _ = cloud_api
+    store.settings = Settings(_env_file=None)
+    assert client.post(ROOT + "/matches/semantic", json={}).status_code == 401
+    response = client.post(ROOT + "/matches/semantic", json={}, headers=HEADERS)
+    assert response.status_code == 503
+    assert response.json()["detail"] == "local_semantic_not_configured"
+    store._request.assert_not_called()
+
+
 def test_intake_uses_configured_model_and_never_writes_on_success(cloud_api, monkeypatch):
-    from app.api.routes import stealth_cloud
     from app.core_cloud.intake import IntakeFacts, review
 
     client, store, _ = cloud_api
@@ -69,7 +80,7 @@ def test_intake_uses_configured_model_and_never_writes_on_success(cloud_api, mon
         calls.append((value.turns, provider.model))
         return review(IntakeFacts(title="披薩需求"), provider.model)
 
-    monkeypatch.setattr(stealth_cloud, "interpret", extract)
+    monkeypatch.setattr("app.stealth.local_providers.interpret", extract)
     result = client.post(ROOT + "/intake", json={"turns": ["想吃披薩"]}, headers=HEADERS)
     assert result.status_code == 200 and result.headers["cache-control"] == "no-store"
     assert result.json()["is_llm"] is True and not result.json()["ready_for_review"]

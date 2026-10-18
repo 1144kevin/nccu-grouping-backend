@@ -62,7 +62,7 @@ def validate_cloud_settings(settings: Settings) -> None:
         raise ValueError("Configure the scoped project's Publishable key")
     if settings.supabase_service_role_key or settings.openai_api_key:
         raise ValueError("Cloud runtime does not accept admin or paid AI keys")
-    if settings.stealth_ai_provider != "offline_rules":
+    if settings.stealth_ai_provider != "offline_rules" or settings.stealth_semantic_enabled:
         raise ValueError(
             "Cloud runtime supports free rule drafts only; no local/paid model connection"
         )

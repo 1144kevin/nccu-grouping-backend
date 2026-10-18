@@ -161,7 +161,9 @@ class StealthService:
                 unit.event(actor, "signal_revoked", now)
             return signal
 
-    def run_matches(self, actor: UUID, maximum: int, now: datetime) -> list[ProposalView]:
+    def run_matches(
+        self, actor: UUID, maximum: int, now: datetime, *, preferred_order: list[str] | None = None
+    ) -> list[ProposalView]:
         if not 1 <= maximum <= 5:
             raise StealthError(422, "invalid_match_limit")
         with self.store.transaction() as unit:
@@ -190,6 +192,9 @@ class StealthService:
                 unit.blocked_pairs(),
                 now,
             )
+            if preferred_order:
+                priority = {key: i for i, key in enumerate(preferred_order)}
+                candidates.sort(key=lambda p: priority.get(p.fingerprint, len(priority)))
             created = []
             for candidate in candidates:
                 if candidate.fingerprint in seen or any(

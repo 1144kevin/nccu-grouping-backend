@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Header, Query, Response
 from app.stealth.ai import DraftProvider
 from app.stealth.dependencies import current_local_user, get_draft_provider, get_local_service
 from app.stealth.ollama import LocalModelError
+from app.stealth.provider_registry import local_semantic_matcher
 from app.stealth.schemas import (
     Agent,
     AgentInput,
@@ -22,6 +23,7 @@ from app.stealth.schemas import (
     SignalInput,
     SignalPage,
 )
+from app.stealth.semantic_local import SemanticMatchRun, run_local_semantic
 from app.stealth.service import StealthError, StealthService, utc_now
 
 router = APIRouter(prefix="/stealth", tags=["stealth-local"])
@@ -99,6 +101,11 @@ def draft(
 def run_matches(value: MatchRunInput, actor: Actor, service: Service):
     items = service.run_matches(actor, value.max_proposals, utc_now())
     return MatchRunOutput(items=items, created=len(items))
+
+
+@router.post("/matches/semantic-run", response_model=SemanticMatchRun)
+def run_semantic_matches(value: MatchRunInput, actor: Actor, service: Service):
+    return run_local_semantic(service, actor, value.max_proposals, local_semantic_matcher())
 
 
 @router.get("/proposals", response_model=ProposalPage)

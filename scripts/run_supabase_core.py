@@ -31,6 +31,8 @@ def main() -> None:
         "STEALTH_AI_PROVIDER",
         "STEALTH_OLLAMA_MODEL",
         "STEALTH_OLLAMA_LOCAL_ONLY_CONFIRMED",
+        "STEALTH_SEMANTIC_ENABLED",
+        "STEALTH_EMBEDDING_MODEL",
     ):
         if local_ai.get(name):
             os.environ[name] = local_ai[name]

@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     stealth_ai_provider: Literal["offline_rules", "ollama_local"] = "offline_rules"
     stealth_ollama_model: str = ""
     stealth_ollama_local_only_confirmed: bool = False
+    stealth_semantic_enabled: bool = False
+    stealth_embedding_model: str = "qwen3-embedding:0.6b"
 
     model_config = SettingsConfigDict(
         env_file=".env",
