@@ -42,8 +42,7 @@ app.include_router(api_router, prefix=settings.api_v1_prefix)
 async def validation_error_handler(_, exc: RequestValidationError) -> JSONResponse:
     # Validation errors must not echo passwords or private request bodies back to clients.
     errors = [
-        {"loc": error["loc"], "msg": error["msg"], "type": error["type"]}
-        for error in exc.errors()
+        {"loc": error["loc"], "msg": error["msg"], "type": error["type"]} for error in exc.errors()
     ]
     return JSONResponse(status_code=422, content={"detail": errors})
 
