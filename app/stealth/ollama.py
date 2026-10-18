@@ -105,7 +105,7 @@ class OllamaDraftProvider:
         if not MODEL_SLOT.acquire(blocking=False):
             raise LocalModelError("local_model_busy")
         try:
-            return self._chat(messages, schema, prompt, limit=90, tokens=768, context=8192)
+            return self._chat(messages, schema, prompt, limit=90, tokens=1024, context=8192)
         finally:
             MODEL_SLOT.release()
 

@@ -97,7 +97,14 @@ def test_only_user_facts_go_to_verified_loopback_model_no_database_or_secrets():
             json={
                 "done": True,
                 "message": {
-                    "content": complete().model_dump_json(),
+                    "content": complete(
+                        evidence={
+                            "budget": "預算120元",
+                            "start": "一小時後",
+                            "duration": "持續兩小時",
+                            "roles": "願意分食",
+                        }
+                    ).model_dump_json(),
                 },
             },
         )
@@ -105,7 +112,9 @@ def test_only_user_facts_go_to_verified_loopback_model_no_database_or_secrets():
     provider = OllamaDraftProvider(
         "synthetic:1b", local_only_confirmed=True, transport=httpx.MockTransport(handle)
     )
-    result = interpret(IntakeRequest(turns=["找人吃披薩", "一小時後，持續兩小時"]), provider)
+    result = interpret(
+        IntakeRequest(turns=["找人吃披薩，預算120元，願意分食", "一小時後，持續兩小時"]), provider
+    )
     assert result.provider == "ollama_local" and result.ready_for_review
     assert len(requests) == 2
     assert all(r.url.host == "127.0.0.1" and "authorization" not in r.headers for r in requests)
