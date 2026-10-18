@@ -19,6 +19,10 @@ def main() -> None:
         if config.get(name):
             os.environ[name] = config[name]
     local_ai = dotenv_values(ROOT / ".local" / "local-ai.env")
+    media = dotenv_values(ROOT / ".local" / "media-signing.env")
+    for name in ("CORE_MEDIA_ENABLED", "CORE_MEDIA_SIGNING_KEY"):
+        if media.get(name):
+            os.environ[name] = media[name]
     for name in (
         "STEALTH_AI_PROVIDER",
         "STEALTH_OLLAMA_MODEL",

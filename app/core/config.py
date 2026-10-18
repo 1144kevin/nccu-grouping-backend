@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +19,8 @@ class Settings(BaseSettings):
     core_supabase_enabled: bool = False
     # Enable only after adding the exact native callback to the development Auth allowlist.
     core_google_ios_enabled: bool = False
+    core_media_enabled: bool = False
+    core_media_signing_key: SecretStr = SecretStr("")
 
     supabase_url: str = ""
     supabase_publishable_key: str = ""

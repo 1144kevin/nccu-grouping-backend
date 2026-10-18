@@ -148,6 +148,7 @@ class PostInput(Input):
 
 class PostView(BaseModel):
     is_demo: bool = False
+    image_id: UUID | None = None
     id: UUID
     author_id: UUID
     author_name: str
