@@ -40,7 +40,15 @@ class OllamaDraftProvider:
         self.model, self.transport = model, transport
 
     @staticmethod
-    def _json_request(client: httpx.Client, method: str, path: str, *, limit=20, **kwargs) -> dict:
+    def _json_request(
+        client: httpx.Client,
+        method: str,
+        path: str,
+        *,
+        limit=20,
+        max_bytes=MAX_RESPONSE_BYTES,
+        **kwargs,
+    ) -> dict:
         started = time.monotonic()
         try:
             with client.stream(method, path, **kwargs) as response:
@@ -50,7 +58,7 @@ class OllamaDraftProvider:
                     raise LocalModelError("compressed_local_model_response_not_allowed")
                 body = bytearray()
                 for chunk in response.iter_bytes(chunk_size=4096):
-                    if len(body) + len(chunk) > MAX_RESPONSE_BYTES:
+                    if len(body) + len(chunk) > max_bytes:
                         raise LocalModelError("local_model_response_too_large")
                     if time.monotonic() - started > limit:
                         raise LocalModelError("local_model_timeout")

@@ -13,7 +13,8 @@ from app.core_cloud.grounding import (
     personal_role_evidence,
     supported_roles,
 )
-from app.stealth.ollama import LocalModelError, OllamaDraftProvider
+from app.stealth.ollama import LocalModelError
+from app.stealth.provider_contracts import ExtractionTransport
 from app.stealth.schemas import Category, Location, Money, Role, SignalKind, StrictModel, Tag
 
 
@@ -82,7 +83,7 @@ class IntakeResult(StrictModel):
     facts: IntakeFacts
     questions: list[IntakeQuestion]
     ready_for_review: bool
-    provider: Literal["ollama_local"] = "ollama_local"
+    provider: Literal["ollama_local", "apple_on_device", "openai"] = "ollama_local"
     is_llm: Literal[True] = True
     model: str
     warnings: list[str]
@@ -209,7 +210,7 @@ duration 對應能配合多久；roles 對應本人角色表態。
 """
 
 
-def interpret(value: IntakeRequest, provider: OllamaDraftProvider) -> IntakeResult:
+def interpret(value: IntakeRequest, provider: ExtractionTransport) -> IntakeResult:
     content = provider.extract(
         [{"role": "user", "content": turn} for turn in value.turns],
         IntakeFacts.model_json_schema(),
