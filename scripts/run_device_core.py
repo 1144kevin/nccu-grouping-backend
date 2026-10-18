@@ -29,6 +29,7 @@ def main():
     os.environ.update(
         {
             "ENVIRONMENT": "local",
+            "CORE_CLOUD_ENABLED": "false",
             "CORE_LOCAL_ENABLED": "false",
             "CORE_SUPABASE_ENABLED": "true",
             "CORE_DEVICE_TEST_ENABLED": "true",

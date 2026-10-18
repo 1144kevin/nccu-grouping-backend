@@ -22,6 +22,8 @@ _rate_lock = threading.Lock()
 
 
 def require_local_mode(request: Request) -> None:
+    if getattr(getattr(request, "state", None), "cloud_verified", False):
+        return
     settings = get_settings()
     if (
         not (settings.core_local_enabled or settings.core_supabase_enabled)
@@ -77,7 +79,7 @@ def get_store(
 ) -> CoreStore | SupabaseCoreStore:
     # Post responses contain account-specific membership state and must not be cached.
     response.headers["Cache-Control"] = "no-store"
-    settings = get_settings()
+    settings = getattr(request.state, "runtime_settings", None) or get_settings()
     if settings.core_supabase_enabled:
         authorization = request.headers.get("authorization", "")
         token = authorization[7:] if authorization.lower().startswith("bearer ") else None
@@ -107,6 +109,9 @@ UserDep = Annotated[ProfileView, Depends(current_user)]
 
 
 def auth_rate_limit(request: Request, _: Annotated[None, Depends(require_local_mode)]) -> None:
+    if getattr(request.state, "cloud_verified", False):
+        # Cloud middleware has already charged both bounded quotas using the verified client IP.
+        return
     key = request.client.host
     now = time.monotonic()
     with _rate_lock:

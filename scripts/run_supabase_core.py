@@ -41,6 +41,7 @@ def main() -> None:
     os.environ["BACKEND_CORS_ORIGINS"] = '["http://localhost:8081","http://127.0.0.1:8081"]'
     os.environ["DEBUG"] = "false"
     os.environ["CORE_DEVICE_TEST_ENABLED"] = "false"
+    os.environ["CORE_CLOUD_ENABLED"] = "false"
     from app.core.config import get_settings
     from app.core_cloud.store import SupabaseCoreStore
 

@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from typing import Literal
 
@@ -25,6 +26,16 @@ class Settings(BaseSettings):
     core_device_test_enabled: bool = False
     core_device_test_host: str = ""
     core_device_test_clients: list[str] = []
+    # Separate cloud runtime: TLS terminates at one explicitly trusted ingress hop.
+    core_cloud_enabled: bool = False
+    cloud_public_api_url: str = ""
+    cloud_proxy_networks: list[str] = []
+    cloud_workers: int = 1
+    cloud_instances: int = 1
+    cloud_body_limit: int = 6 * 1024 * 1024
+    cloud_request_limit: int = 240
+    cloud_auth_limit: int = 20
+    cloud_google_web_callback: str = ""
 
     supabase_url: str = ""
     supabase_publishable_key: str = ""
@@ -46,9 +57,15 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        hide_input_in_errors=True,
     )
 
 
 @lru_cache
 def get_settings() -> Settings:
+    if (
+        os.environ.get("ENVIRONMENT") == "cloud"
+        or os.environ.get("CORE_CLOUD_ENABLED", "").lower() == "true"
+    ):
+        return Settings(_env_file=None)
     return Settings()

@@ -49,6 +49,14 @@ class GoogleFlows:
     def start(
         self, store: SupabaseCoreStore, *, client: Literal["web", "ios"] = "web"
     ) -> GoogleStartView:
+        from app.core.config import get_settings
+
+        settings = getattr(store, "settings", None) or get_settings()
+        callback = (
+            settings.cloud_google_web_callback if settings.core_cloud_enabled else CALLBACK_URL
+        )
+        if client == "web" and settings.core_cloud_enabled and not callback:
+            raise HTTPException(403, "google_cloud_web_not_configured")
         settings = store._request("GET", "/auth/v1/settings")
         providers = settings.get("external") if isinstance(settings, dict) else None
         if not isinstance(providers, dict) or providers.get("google") is not True:
@@ -69,7 +77,7 @@ class GoogleFlows:
         query = urlencode(
             {
                 "provider": "google",
-                "redirect_to": IOS_CALLBACK_URL if client == "ios" else CALLBACK_URL,
+                "redirect_to": IOS_CALLBACK_URL if client == "ios" else callback,
                 "code_challenge": challenge,
                 "code_challenge_method": "s256",
                 "scopes": "openid email profile",

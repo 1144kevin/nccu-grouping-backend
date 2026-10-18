@@ -35,7 +35,8 @@ def google_start(
     if not isinstance(store, SupabaseCoreStore):
         raise HTTPException(503, "google_login_requires_supabase")
     client = value.client if value else "web"
-    if client == "ios" and not get_settings().core_google_ios_enabled:
+    settings = getattr(store, "settings", None) or get_settings()
+    if client == "ios" and not settings.core_google_ios_enabled:
         raise HTTPException(503, "google_ios_not_configured", headers={"Cache-Control": "no-store"})
     return google_flows.start(store, client=client)
 

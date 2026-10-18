@@ -42,6 +42,7 @@ class SupabaseCoreStore:
         ) != PROJECT_URL or not settings.supabase_publishable_key.startswith("sb_publishable_"):
             raise HTTPException(503, "supabase_development_not_configured")
         self.key = settings.supabase_publishable_key
+        self.settings = settings
         self.token = token
 
     def _request(self, method: str, path: str, *, body=None, token: str | None = None) -> Any:

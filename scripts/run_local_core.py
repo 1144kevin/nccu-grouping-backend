@@ -13,6 +13,7 @@ def main() -> None:
     os.chdir(ROOT)
     sys.path.insert(0, str(ROOT))
     os.environ["ENVIRONMENT"] = "local"
+    os.environ["CORE_CLOUD_ENABLED"] = "false"
     os.environ["CORE_LOCAL_ENABLED"] = "true"
     os.environ["CORE_LOCAL_DB_PATH"] = ".local/core.sqlite3"
     os.environ["API_V1_PREFIX"] = "/api/v1"
