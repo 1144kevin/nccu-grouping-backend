@@ -63,3 +63,7 @@
 ## Windows 已完成的交接準備
 
 Mac setup／檢查、只含已提交歷史的 Git bundle 產生器、模擬器／內網TLS裝置／未來HTTPS雲端三種 App profile、預設關閉的限制裝置TLS runner、帳號設定連線狀態、未使用原生權限收斂已備妥。指令見 IPHONE_TESTFLIGHT.md，逐項紀錄見 DEVICE_ACCEPTANCE.csv。沒有新增部署、LAN監聽或系統憑證；Mac原生編譯、iPhone信任與連線、公開API runtime／部署、Apple登入、政策與治理仍待後續。
+
+## 雲端後端準備更新
+
+獨立cloud runner、檢查專用環境、嚴格TLS代理合約、精確CORS、單程序限流／body限制、無憑證健康probe、非root鎖檔容器設定與公開URL App profile匯出已完成。沒有部署、修改Supabase或實際build Docker。第一版限制單程序／單實例；保留原本local模式與本機模型，雲端只提供手動需求及免費規則草案。主機／TLS／代理實際驗收、Docker Linux build、操作備份與iPhone流程仍待後續。

@@ -46,8 +46,10 @@ def build_core_contract() -> dict:
         "Stealth intake supports optional local-only structured model extraction and follow-up; "
         "matches include free deterministic cost/role drafts, editable final terms "
         "and atomic formation after unanimous versioned consent. "
-        "Requires ENVIRONMENT=local, loopback by default; explicit device tests require direct "
-        "TLS, a private bind address and an exact client IP allowlist. Not a production adapter."
+        "Loopback by default. Explicit device tests require private direct TLS "
+        "and exact client IPs. "
+        "A separate validated single-instance cloud runtime supports trusted HTTPS ingress; "
+        "development demo cleanup and local-model intake are unavailable in cloud mode."
     )
     schema["servers"] = [{"url": "http://127.0.0.1:8000"}]
     return schema

@@ -61,3 +61,5 @@ uv run alembic history
 
 
 Mac／iPhone 最短交接指令、離線 Git bundle 與三種連線 profile 已整理於 [交接流程](docs/IPHONE_TESTFLIGHT.md)，實機結果請填 [驗收清單](docs/DEVICE_ACCEPTANCE.csv)。Windows 準備不代表已完成原生編譯或部署。
+
+雲端執行入口與部署前檢查已備妥，尚未部署：見 [雲端準備與環境合約](docs/CORE_SUPABASE_DEV.md)。`scripts/run_cloud_core.py` 預設只檢查；不使用本機runner部署。雲端第一版限定單程序／單實例及免費規則草案。

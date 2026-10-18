@@ -429,3 +429,78 @@ cd /d C:\Users\aup20\projects\nccu-grouping-backend
 依序已套用 core_user_safety.sql、core_account_deletion.sql、core_account_deletion_storage_access.sql、core_account_deletion_storage_serialization.sql；已套用檔案不可重跑或覆寫，修正要另增 migration。所有 app RPC 驗證目前 auth.sessions，舊 private RPC 不能直接繞過。Storage 與刪除使用同一交易鎖序，避免清理時新增圖片；目前採全域序列化以保護小型開發專案，正式大量流量需評估吞吐。
 
 驗證：334個後端、118個前端測試；三個隔離 Auth 身份實測封鎖、共享群組、第三人可用、公開／草稿實體圖片清理、登出重新登入續作、舊憑證拒絕。另以 core_user_safety_smoke.sql、core_account_deletion_smoke.sql、core_account_deletion_edges_smoke.sql 交易回滾測試逾期／跨登入確認碼、舊登入、偷揪及示範批次 FK、成團分工去識別。全部隔離身份、資料及本機測試憑證檔已清除；原5個 Auth／profile、7筆示範拼單、3則訊息、3筆示範需求保留。這不代表已完成 iPhone 原生或 TestFlight 驗收。
+
+
+## 雲端部署準備（尚未部署）
+
+後端新增獨立 `scripts/run_cloud_core.py`，不再以放寬本機 runner 的方式部署。ENVIRONMENT=cloud 與 CORE_CLOUD_ENABLED=true 必須同時明確設定；本機／SQLite／iPhone內網 runner 保持原功能，且會關閉雲端模式。此次僅程式、環境與合成請求測試，沒有修改 Supabase、執行 migration、開放網路、部署或消耗付費服務。
+
+### 最短設定與檢查
+
+1. 將 `config/cloud.env.example` 私下複製成 `.local/cloud.env`。
+2. 填入真實 CLOUD_PUBLIC_API_URL（精確 HTTPS DNS 網址，以 /api/v1 結尾）及 SUPABASE_PUBLISHABLE_KEY。仍只允許指定開發專案 axdwbfhrkbovgrbngrrh，不會自動轉到其他專案。
+3. CLOUD_PROXY_NETWORKS 填入直接連到 API 的 TLS gateway IP／窄網段，不是 iPhone IP；不得使用 *、0.0.0.0/0 或寬泛全內網。預設127.0.0.1/32只適用同機gateway。跨容器／平台需填真正的立即上游範圍並隔離API埠。
+4. 原生 Google allowlist 完成後才將 CORE_GOOGLE_IOS_ENABLED 設 true；保持 CLOUD_GOOGLE_WEB_CALLBACK 空白及 BACKEND_CORS_ORIGINS=[] 即為原生 App 模式。後端只預留HTTPS Web callback；現有Web前端仍限制localhost，本輪沒有把Web登入改成雲端網站。
+5. 使用圖片時另安全移交目前資料庫對應的 CORE_MEDIA_SIGNING_KEY（64字元小寫hex），再設定 CORE_MEDIA_ENABLED=true。不能重新產生取代舊驗證金鑰。沒有此金鑰時純文字流程與本人刪除清理仍可使用。
+
+```cmd
+.venv\Scripts\python.exe scripts\run_cloud_core.py --env-file .local\cloud.env
+```
+
+Mac／Linux 使用 `.venv/bin/python`。預設只有檢查，不建立 listener、不連 Supabase、不執行 Docker、不產生雲端資源。模板中的佔位網域／key會被拒絕，這是預期保護。錯誤只列設定欄位或固定說明，不列印密鑰值。雲端讀取程序環境及指定檔案，不自動讀工作目錄 .env 或 Windows .local 設定。
+
+可加 `--write-client-profile` 匯出 `.local/apple-release.json`；只有 profile=release 與公開 API 網址，沒有任何key。後續帶到Mac，複製為前端 `.local/apple-dev.json` 後執行 `npm run apple:check`、`npm run apple:device`，或直接用既有 apple:configure 指令填相同網址。App重新編譯才會套用網址；設定檢查成功不代表伺服器已可達。
+
+### 未來真正啟動的唯一入口
+
+```bash
+python scripts/run_cloud_core.py --serve
+```
+
+此指令留給後續已授權的部署，本輪沒有執行。主機需提供所有環境變數；CLOUD_BIND_HOST預設127.0.0.1，只有容器／私有網路需要時明確設0.0.0.0，PORT由平台填入。API不能直接公開在HTTP埠；必須由受信任TLS gateway連入，對外只提供HTTPS。代理必須保留 /api/v1 路徑，不使用root-path重寫。
+
+`config/nginx-cloud.conf.example` 提供單一TLS ingress合約及邊緣限流範例，放在Nginx http context；沒有安裝或啟動。代理必須覆寫 Host、X-Forwarded-Proto=https、X-Forwarded-For=實際使用者單一IP；X-Forwarded-Host若提供必須一致，移除 Forwarded／X-Real-IP。不能用 proxy_add_x_forwarded_for 拼接不可信標頭。程序關閉 Uvicorn 自動 proxy headers；由自己的middleware核對真實socket peer、Host與轉送資料。直接HTTP、未知代理、錯Host、轉送鏈／重複關鍵標頭與未允許Origin均拒絕。
+
+如果代管平台使用多層代理或無法覆寫成此合約，需先按該平台官方網路資料調整與重測；不能把信任範圍改成萬用字元。平台／gateway與API的網路隔離是部署必須驗收的部分，單靠env檢查無法證明。
+
+### 執行與成本限制
+
+- 第一版只支援一個程序、一個實例；CLOUD_WORKERS／CLOUD_INSTANCES必須是1，WEB_CONCURRENCY／UVICORN_WORKERS若提供也只能1，禁止reload。Google PKCE單次proof及限流保存在記憶體，不需要Redis或其他付費服務。平台必須關閉autoscaling、多副本及滾動更新期間的新舊副本重疊；重新啟動或主機休眠會清空proof與程序限流，登入需重新開始。
+- 每個已驗證來源IP預設20次登入相關請求／分鐘、240次總請求／分鐘；最多4096個活躍quota key，容量滿時拒絕新增key。計數有鎖與期限，不因任意新IP無限成長。Nginx範例另有邊緣限流，正式平台也需同等保護。
+- Supabase Auth另有自己的配額。後端使用Publishable key，因此Supabase可能將所有Auth請求按伺服器出口IP計算；不能假裝傳X-Forwarded-For就改變上游限流。本版本沒有加入secret API key或更動Supabase設定。需在實際測試流量下驗證429與重試。[官方配額說明](https://supabase.com/docs/guides/auth/rate-limits)
+- 雲端明確使用免費規則草案／手動需求，拒絕OpenAI key、service_role與ollama_local。分身、配對、費用／分工、改版清空同意及同版全員確認成團保留；自然語言本機Qwen仍只在原本localhost模式使用，不會隨雲端部署自動公開或搬進iPhone。
+- 目前不支援雲端WebSocket。核心聊天保留既有前景輪詢；APNs、語音與Apple裝置模型沒有在本輪實作。
+
+### 安全與可觀測性
+
+JSON body上限6MiB（包含base64圖片），即使chunked或偽造Content-Length也限制實際讀取；讀取逾時30秒。雲端限制同時64個連線、短keep-alive，關閉公開docs／schema、本機偷揪及示範清理入口。本人資料仍經既有Supabase JWT／live session及RPC權限，不使用管理key；封鎖、刪除與全員確認規則沒有移除。
+
+回應有no-store、nosniff、HSTS、no-referrer與隨機request ID。雲端HTTP client INFO URL日誌及Uvicorn access log關閉，避免 signed URL／code／token進入常規日誌；Nginx範例只記method、status及request ID。實際平台的代理／錯誤日誌、保留期限與備份仍需另訂，不保證第三方日誌自動去識別。
+
+`/health`是無外部依賴的liveness，只回ok；可供內部HTTP健康檢查。`/ready`需通過TLS代理驗證，回configured／database=not_probed；App既有 /api/v1/development/readiness 也可使用。這些都不代表Auth／資料庫／Storage已通過實際驗收。
+
+部署完成並取得另外授權後，可執行：
+
+```bash
+python scripts/check_cloud_api.py --url https://你的API網域/api/v1
+# 上面只驗證格式；以下才會真的做兩次無憑證HTTPS GET
+python scripts/check_cloud_api.py --url https://你的API網域/api/v1 --probe
+```
+
+probe只讀 /health 及 /ready，不寄登入信、不讀帳號資料、不跟隨redirect、不關閉TLS驗證；仍需另外用隔離帳號跑登入、圖片、聊天、封鎖、刪除與偷揪驗收。
+
+### 容器與回復
+
+Dockerfile改為固定uv版本及uv.lock安裝runtime依賴、多階段、非root使用者；只複製app與雲端runner，不攜帶Git、.env、.local、測試、私鑰或migrations。容器啟動不下載模型、不更新schema。密鑰由平台的執行期環境／secret store提供，不能用Docker build ARG或COPY放進image。
+
+此執行環境找不到Docker CLI，因此此次沒有實際build／啟動image，也沒有執行Nginx。未來先做Linuximage build、鎖檔／base image掃描與gateway整合驗證，再安排部署；不能把Python合成測試寫成容器已驗收。正式發行前可進一步固定base image digest。
+
+部署時保留前一個已驗證image與env版本；回復時換回前一版，不自動回退資料表或重建HMAC金鑰。migration維持獨立、逐份審查；不要執行早期Alembic initial schema到既有Supabase專案。資料與備份、監控及恢復演練仍是營運項目。
+
+### 本輪驗證與尚待外部驗收
+
+新增合成測試涵蓋無效env、秘密值遮蔽、單實例限制、代理偽造、Origin/CORS、串流大小限制、限流併發／容量／過期、固定iOS Google回跳、既有使用者授權與HTTPSprobe。沒有對真人或雲端帳號做測試操作。主機、網域、TLS憑證、實際代理IP與防直連、Supabase配額、Linux容器build、iPhone／TestFlight仍待實際環境驗收。Apple登入與完整政策／治理缺口見RELEASE_READINESS.md。
+
+官方實作依據：[FastAPI proxy](https://fastapi.tiangolo.com/advanced/behind-a-proxy/)、[Uvicorn設定](https://uvicorn.dev/settings/)、[uv容器整合](https://docs.astral.sh/uv/guides/integration/docker/)、[Nginx限流](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html)。
+
+本輪最終驗證：401項後端測試通過、Ruff及格式檢查通過、48條API合約離線匯出。兩項既有依賴deprecation warnings保留。Docker／Nginx未執行、沒有對真實雲端endpoint做probe；前端未變更。

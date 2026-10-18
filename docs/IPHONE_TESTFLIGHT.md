@@ -88,7 +88,7 @@ npm run apple:prepare-release
 
 上述只準備 App 設定／Mac 原生工程，不部署 API、不上傳。真實 HTTPS API 存在後，可用 release profile 執行 apple:device 驗證，再在 Xcode Archive。release profile 會拒絕 localhost、內網 IP、HTTP、網址內憑證與 ATS 放寬。
 
-**不能把內網測試 runner 當成雲端入口。** 現有後端刻意限指定 Supabase 開發專案；正式雲端 API runtime、TLS／可信代理、共享登入限流、CORS、監控與備份、免費主機休眠行為仍須在部署方案確定後實作與驗收。更換 Supabase 專案也需有序 migrations／Auth redirect／私人 Storage 金鑰與資料遷移，不能只換一把 key。本輪已把手機端 URL 切換及交接做成固定入口，沒有宣稱雲端已就緒。
+**不能把內網測試 runner 當成雲端入口。** 現有後端刻意限指定 Supabase 開發專案；獨立雲端 API runtime、TLS代理驗證、單實例限流、CORS及Dockerfile已備妥，見CORE_SUPABASE_DEV.md的雲端部署準備。主機實際TLS／代理、防直連、容器build、監控備份與休眠行為仍需驗收；本輪沒有部署。更換 Supabase 專案也需有序 migrations／Auth redirect／私人 Storage 金鑰與資料遷移，不能只換一把 key。本輪已把手機端 URL 切換及交接做成固定入口，沒有宣稱雲端已就緒。
 
 ### 6. Google、權限與驗收
 
