@@ -503,4 +503,66 @@ Dockerfile改為固定uv版本及uv.lock安裝runtime依賴、多階段、非roo
 
 官方實作依據：[FastAPI proxy](https://fastapi.tiangolo.com/advanced/behind-a-proxy/)、[Uvicorn設定](https://uvicorn.dev/settings/)、[uv容器整合](https://docs.astral.sh/uv/guides/integration/docker/)、[Nginx限流](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html)。
 
-本輪最終驗證：401項後端測試通過、Ruff及格式檢查通過、48條API合約離線匯出。兩項既有依賴deprecation warnings保留。Docker／Nginx未執行、沒有對真實雲端endpoint做probe；前端未變更。
+前一輪雲端準備驗證：401項後端測試通過、Ruff及格式檢查通過、48條API合約離線匯出。兩項既有依賴deprecation warnings保留。Docker／Nginx未執行、沒有對真實雲端endpoint做probe；前端未變更。
+
+## 本機語義配對與可替換 AI 接口
+
+本輪僅改本機程式，沒有新增 Supabase schema、操作真人帳號、部署或呼叫付費模型。三個 Protocol 定義在 `app/stealth/provider_contracts.py`，目前只有免費 loopback Ollama 實作：
+
+| 接口 | 輸入與輸出 | 邊界 |
+| --- | --- | --- |
+| `IntentInterpreter` | 訪談文字 → `IntakeResult` 事實草稿及缺漏問題 | 沿用抽取證據檢查與本人確認，不自動儲存需求 |
+| `EmbeddingProvider` | query／document → 正規化 `VectorBatch` | 模型名稱、digest、512 維及 retrieval-v1 一起識別向量空間；版本不一致拒絕混用 |
+| `CandidateReviewer` | 本人需求、合法候選摘要、允許的事實代碼 → `CandidateJudgment` | 只能選受支持理由；缺費用、志願或優惠條件強制待確認；不能授權或執行動作 |
+
+未來 Apple／OpenAI 實作可共用介面，但目前沒有這兩者的可執行 adapter。更換向量模型需重新產生向量；目前逐次計算、沒有持久化向量索引或 pgvector 搜尋。費用、分工草案仍由既有規劃器產生；模型不捏造報價。模型端拒絕、逾時、忙碌或格式錯誤以 `LocalModelError` 安全代碼回報；未來 adapter 應遵守相同錯誤合約。
+
+### 啟用與測試
+
+本 Windows 工作區已安裝 `qwen3.5:4b` 及 `qwen3-embedding:0.6b`。新環境需先安裝 Ollama，再明確下載模型；Windows portable runner 固定工作區內模型目錄、loopback、停用雲端及單筆推論。API 不會自動下載。Embedding 約 639 MB，文字模型約 3.3 GB；不需 API key。官方模型資料：[Qwen3 Embedding](https://ollama.com/library/qwen3-embedding)、[0.6B Apache-2.0 授權](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B)、[Ollama Embed API](https://docs.ollama.com/api/embed)。
+
+在後端專案開終端機啟動模型；已在執行時不要再啟動第二份：
+
+```powershell
+.venv/Scripts/python.exe scripts/run_local_model.py
+# 新環境且明確需要下載時，另一個終端機才執行：
+.venv/Scripts/python.exe scripts/run_local_model.py pull
+.venv/Scripts/python.exe scripts/run_local_model.py pull-embedding
+```
+
+專案忽略的 `.local/local-ai.env` 設定如下，再重啟本機 API：
+
+```dotenv
+STEALTH_AI_PROVIDER=ollama_local
+STEALTH_OLLAMA_MODEL=qwen3.5:4b
+STEALTH_OLLAMA_LOCAL_ONLY_CONFIRMED=true
+STEALTH_SEMANTIC_ENABLED=true
+STEALTH_EMBEDDING_MODEL=qwen3-embedding:0.6b
+```
+
+```powershell
+.venv/Scripts/python.exe scripts/run_supabase_core.py
+.venv/Scripts/python.exe scripts/evaluate_semantic.py
+# 以下兩個指令才會呼叫本機模型；只用固定合成資料，不連 Supabase：
+.venv/Scripts/python.exe scripts/evaluate_semantic.py --run-local
+.venv/Scripts/python.exe scripts/smoke_local_semantic.py --run-local
+```
+
+真實模型評估：固定 12 個檢索案例 top-1 12/12、top-2 12/12；6 個候選判讀案例通過，包括 2 個互補情境、3 個缺資料及 1 個指令干擾。這是初步合成回歸案例，不是正式準確率或過敏安全驗證；其中未知事項由程式強制待確認。可重跑評估，失敗會傳回非零 exit code；時間、模型 digest、逐題排序及判讀存於忽略的 `.local/evals/semantic-latest.json`。案例固定於 `tests/fixtures/semantic_cases.json`，不使用真人資料。隔離 SQLite smoke 已驗證真實模型建立待確認配對，且沒有同意時成團被擋下，測後自動刪除自己的暫存資料庫。
+
+本機本次量測：每題檢索平均約 0.30 秒（0.19–1.16 秒），每筆判讀平均約 3.82 秒（3.09–6.26 秒），僅代表此筆電與已啟動模型的本輪測試，不能當成併發或冷啟動保證。模型共用單筆執行鎖；忙碌時回報，不累積無界排隊。最終後端回歸 430 項通過、Ruff／格式檢查通過；49 條核心 API 及 12 條 SQLite 偷揪 API 合約離線匯出。保留兩項既有測試依賴 deprecation warnings。
+
+### 兩種 API 的差異
+
+| 模式／API | 實際行為 |
+| --- | --- |
+| 本機 SQLite：`POST /api/v1/stealth/matches/semantic-run`，body `{"max_proposals": 3}` | 硬條件篩選 → 最多 12 個候選算向量 → 判讀前三個 → 依語義順序交回既有交易配對，重新檢查版本、封鎖、期限、限額及冷卻後建立提案 |
+| 本機 API＋Supabase 開發資料：`POST /api/v1/stealth-cloud/matches/semantic`，body `{"review_limit": 3}` | 僅重新排序帳號原有權看到的 pending／ready 配對摘要，運算後再讀一次並移除變更／失效項目；不建立配對、不改同意或方案 |
+
+兩者都必須通過既有登入與模式限制。先用既有 `/matches/run` 或需求建立流程產生 Supabase 配對，再呼叫摘要排序。App 現有按鈕與輪詢仍走原配對 API；本輪新增後端明確操作入口，可於本機 Swagger 測試，沒有把昂貴推論放入每十秒輪詢。
+
+Supabase 摘要包含餐點分類、成員數與已授權的志願，不含他人的私人需求原文。因此雲端開發模式目前只能對合法摘要排序，語義辨識細節比 SQLite 原型少，尚未實作跨使用者私人文字的語義候選發現。要改善需另設權限受限的結構化候選摘要與索引，不能為效果直接公開原文。
+
+回應 `ranking.status` 為 completed／empty／unavailable，`similarity` 是餘弦相似度、不是成功率；`review_status` 與 `review_model` 分別記錄判讀結果和模型。模型不可用會保留規則順序、相似度為 null 並附警告，不假裝已做語義理解。排序及判讀是建議，不代替原有全員同意同一版費用與分工的雲端成團交易。本機推論期間不持有資料庫交易。
+
+local 模式才可啟用；device runner 明確關閉此功能，cloud runner 也拒絕啟用。Apple 留到 Mac 實作及實機驗證。OpenAI 未呼叫，也沒有自動切換遠端或付費模型。Mac 可安裝自己的 Ollama 並使用相同模型／評估；Windows 的 `.exe`、模型快取與 `.venv` 不會放入交接 Git bundle。

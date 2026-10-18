@@ -473,6 +473,52 @@
         ]
       }
     },
+    "/api/v1/stealth/matches/semantic-run": {
+      "post": {
+        "tags": [
+          "stealth-local"
+        ],
+        "summary": "Run Semantic Matches",
+        "operationId": "run_semantic_matches_api_v1_stealth_matches_semantic_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchRunInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticMatchRun"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/stealth/proposals": {
       "get": {
         "tags": [
@@ -964,6 +1010,47 @@
         "additionalProperties": false,
         "type": "object",
         "title": "AgentInput"
+      },
+      "CandidateJudgment": {
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "complementary",
+              "similar",
+              "uncertain",
+              "not_recommended"
+            ],
+            "title": "Verdict"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "location",
+                "time",
+                "category",
+                "shared_tags",
+                "offer",
+                "pickup_volunteer",
+                "cost_unknown",
+                "order_missing",
+                "pickup_missing",
+                "coupon_terms"
+              ]
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Reason Codes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "verdict",
+          "reason_codes"
+        ],
+        "title": "CandidateJudgment"
       },
       "DraftInput": {
         "properties": {
@@ -1516,6 +1603,147 @@
         ],
         "title": "ProposalView",
         "description": "No other user's identity, raw signal, or decision is exposed."
+      },
+      "SemanticItem": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "similarity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Similarity"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CandidateJudgment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "review_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Model"
+          },
+          "review_status": {
+            "type": "string",
+            "enum": [
+              "not_requested",
+              "completed",
+              "unavailable"
+            ],
+            "title": "Review Status",
+            "default": "not_requested"
+          },
+          "explanations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Explanations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "explanations"
+        ],
+        "title": "SemanticItem"
+      },
+      "SemanticMatchRun": {
+        "properties": {
+          "ranking": {
+            "$ref": "#/components/schemas/SemanticRanking"
+          },
+          "created": {
+            "type": "integer",
+            "title": "Created"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProposalView"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ranking",
+          "created",
+          "items"
+        ],
+        "title": "SemanticMatchRun"
+      },
+      "SemanticRanking": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "unavailable",
+              "empty"
+            ],
+            "title": "Status"
+          },
+          "embedding_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedding Model"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SemanticItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "requires_unanimous_confirmation": {
+            "type": "boolean",
+            "const": true,
+            "title": "Requires Unanimous Confirmation",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "items"
+        ],
+        "title": "SemanticRanking"
       },
       "Signal": {
         "properties": {

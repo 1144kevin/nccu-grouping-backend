@@ -46,6 +46,7 @@ def build_core_contract() -> dict:
         "Stealth intake supports optional local-only structured model extraction and follow-up; "
         "matches include free deterministic cost/role drafts, editable final terms "
         "and atomic formation after unanimous versioned consent. "
+        "Optional local semantic ranking reorders authorized summaries without changing consent. "
         "Loopback by default. Explicit device tests require private direct TLS "
         "and exact client IPs. "
         "A separate validated single-instance cloud runtime supports trusted HTTPS ingress; "

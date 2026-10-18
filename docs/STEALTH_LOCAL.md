@@ -1,6 +1,6 @@
 # 偷揪本機開發與驗證
 
-這是新增、預設關閉的本機原型；既有發文等模組保留。尚未接 Supabase JWT、PostgreSQL repository、真實 LLM、Apple 原生模組或推播。正式 schema 有 7 張偷揪表；實際 API 此時使用獨立 SQLite adapter。
+本文件描述獨立 SQLite 原型及其早期限制，預設關閉；既有模組保留。現在 App 的 Supabase 帳號／偷揪整合、真實本機模型與語義配對已另有實作，最新狀態及啟用方式請以 [Supabase 開發說明](CORE_SUPABASE_DEV.md#本機語義配對與可替換-ai-接口) 為準。以下 SQLite 成團與雲端全員確認流程不可混為一談；Apple 原生模型與推播尚未整合。
 
 ## 不需要憑證的驗證
 
@@ -114,13 +114,13 @@ Agent 可選 tone=direct/warm/playful、avatar_key=rice/pizza/tea/cat；這些�
 
 已有：物件擁有者檢查、私有提案回應、agent opt-in、訊號撤銷、版本失效、期限重驗證、雙向封鎖過濾、邀請限額、signal idempotency、成團唯一性、並發消耗訊號、固定 SQL migration、偷揪表 RLS 預設拒絕。
 
-尚未完成：正式 JWT、正式 PostgreSQL 交易 adapter、直接登入／封鎖 UI、全平台有界 SQL 候選查詢、可靠常駐 dispatch、退出／名額釋放、群組／私訊讀寫 API、真實語意模型與效果評估、Apple 整合、TestFlight、推播。既有功能在這次之前也多為空路由，本次沒有假稱已完成。
+本 SQLite adapter 仍未接正式 JWT／核心 PostgreSQL 交易、可靠常駐 dispatch 或大規模有界查詢。App 另外已有 Supabase 登入、封鎖、核心拼單退出／釋位與群聊流程；本機真實語義排序與合成評估也已新增。Apple 整合、TestFlight 與推播仍待完成；完整現況見上述開發說明。
 
 SQLite adapter 會掃描合成資料表再過濾；候選組合數有界，但儲存層還不是大規模查詢方案。正式整合必須改成有索引、分頁與權限範圍的 SQL 查詢。
 
-## 可選的本機 Ollama adapter（未安裝模型、未實機驗證）
+## 可選的本機 Ollama adapter
 
-已提供 adapter 與 MockTransport 測試，不會自動下載模型、啟動 daemon 或連到雲端。當前電腦沒有找到 Ollama 執行檔，因此仍使用預設 offline_rules。
+已有 MockTransport 測試及真實本機模型驗證。此 Windows 工作區另以專案內的 portable Ollama 安裝 Qwen3.5 4B 與 Qwen3 Embedding 0.6B；API 本身不會下載模型、啟動 daemon 或連到雲端。未明確設定時仍使用預設 offline_rules。
 
 後續若你已自行安裝模型，可使用 `STEALTH_AI_PROVIDER=ollama_local`、指定 `STEALTH_OLLAMA_MODEL`，並在確認 Ollama server 使用 `OLLAMA_NO_CLOUD=1` 啟動後，才設定 `STEALTH_OLLAMA_LOCAL_ONLY_CONFIRMED=true`。這是操作前提，backend 不能替另一個本機程序保證雲端設定。
 
