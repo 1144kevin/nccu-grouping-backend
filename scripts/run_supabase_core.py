@@ -1,5 +1,6 @@
 """Run local FastAPI against the explicitly scoped Supabase development project."""
 
+import argparse
 import os
 import sys
 from pathlib import Path
@@ -10,6 +11,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true", help="Validate settings without listening")
+    args = parser.parse_args()
     os.chdir(ROOT)
     sys.path.insert(0, str(ROOT))
     from dotenv import dotenv_values
@@ -41,6 +45,9 @@ def main() -> None:
     from app.core_cloud.store import SupabaseCoreStore
 
     SupabaseCoreStore(get_settings())  # Fail before listening if configuration is invalid.
+    if args.check:
+        print("Scoped Supabase configuration valid. No listener or network requests started.")
+        return
     print("Local API / Supabase development Auth + database. No deployment or paid AI.")
     print("API: http://127.0.0.1:8000/api/v1 ; Ctrl+C stops the server.")
     uvicorn.run("app.main:app", host="127.0.0.1", port=8000, proxy_headers=False)
