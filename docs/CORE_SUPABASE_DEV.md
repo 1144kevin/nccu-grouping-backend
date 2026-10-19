@@ -653,3 +653,7 @@ v2 先排除滿團、取消、截止、雙向封鎖及本人沒興趣項目，�
 驗收找到 seed 的 `location.source=manual` 不符合既有 Pydantic／App 地點合約，會讓清單回 500。已修正 seed 省略手填地點的可選 source，並執行 `core_recommendations_demo_location_fix.sql`，只修復此新批次的 payload／original_payload 且增加版本；沒有放寬既有地點型別或偽稱資料來自 OpenStreetMap。修正後上述完整 API 驗收通過。
 
 兩輪使用的隔離帳號及其臨時貼文／申請／偏好／session 已依 UUID 與 scope 清除，最後一次性帳號數為 0；新增展示批次與既有資料保留。測試密碼與建帳 SQL 已從本機忽略目錄移除，安全報告保留 `.local/recommendations-e2e/report.json`。App／API 未部署，沒有呼叫模型、寄信或使用付費服務。
+
+### App 畫面端到端驗收（2026-10-19）
+
+後續已以三個隔離帳號實際操作 App：推薦 A/B 順位與四項理由、滿團排除、申請待核准、主揪接受、雙方聊天室傳訊、退出釋出名額及重新推薦；退出者與第三人直接開啟聊天室均被拒絕。修正首次載入推薦時誤顯無理由提示。三個臨時帳號與三筆貼文已清理，127 筆示範貼文保留。完整步驟、測試工具與截圖位置見 [畫面驗收紀錄](RECOMMENDATIONS_UI_ACCEPTANCE.md)。此驗收僅限本機 Web，原生 iPhone／TestFlight 仍在 Mac 接續。
