@@ -230,6 +230,41 @@ def test_candidate_reviewer_refuses_model_injected_actions():
         OllamaCandidateReviewer(provider).review(contexts()[0])
 
 
+def test_candidate_output_schema_only_allows_verified_fact_codes():
+    captured = []
+
+    def extract(messages, schema, prompt):
+        captured.append(schema)
+        return json.dumps({"verdict": "complementary", "reason_codes": ["category"]})
+
+    provider = SimpleNamespace(model="synthetic", extract=extract)
+    context = CandidateContext(
+        key="isolated", document="正餐，兩人協調", facts=["category", "coupon_terms"]
+    )
+    result = OllamaCandidateReviewer(provider).review(context)
+    assert result.verdict == "uncertain"  # Coupon conditions still need human confirmation.
+    reasons = captured[0]["properties"]["reason_codes"]
+    assert reasons["items"]["enum"] == ["category", "coupon_terms"]
+    assert reasons["minItems"] == 1
+    assert CandidateJudgment.model_json_schema()["properties"]["reason_codes"]["items"]["enum"] != [
+        "category",
+        "coupon_terms",
+    ]
+
+
+def test_candidate_reviewer_still_refuses_codes_outside_constrained_schema():
+    provider = SimpleNamespace(
+        model="synthetic",
+        extract=lambda *args: json.dumps(
+            {"verdict": "uncertain", "reason_codes": ["cost_unknown"]}
+        ),
+    )
+    with pytest.raises(LocalModelError, match="ungrounded_candidate_review"):
+        OllamaCandidateReviewer(provider).review(
+            CandidateContext(key="isolated", document="已確認價格", facts=["category"])
+        )
+
+
 def test_reviewer_receives_requester_query_without_granting_actions():
     seen = []
 
