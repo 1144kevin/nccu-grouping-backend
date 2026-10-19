@@ -7,6 +7,7 @@ from pydantic import Field, ValidationError, field_validator, model_validator
 
 from app.core_cloud.grounding import (
     FOREIGN_CURRENCY,
+    NUMBER,
     denied_roles,
     minutes_supported,
     money_supported,
@@ -240,6 +241,38 @@ def interpret(value: IntakeRequest, provider: ExtractionTransport) -> IntakeResu
 
 def ground(facts: IntakeFacts, original: str) -> list[str]:
     warnings = []
+    location_names = {
+        "main_gate": ("政大正門", "正門"),
+        "east_gate": ("政大東側門", "東側門", "東門"),
+        "south_gate": ("政大南門", "南門"),
+    }
+    if facts.location_id is not None:
+        mentions = [
+            match
+            for match in re.finditer(
+                "|".join(map(re.escape, location_names[facts.location_id])), original
+            )
+        ]
+        if not mentions or re.search(
+            r"(?:不是|並非|不在|不要|不選|非)\s*$",
+            original[max(0, mentions[-1].start() - 6) : mentions[-1].start()],
+        ):
+            facts.location_id = None
+            warnings.append("地點缺少可核對的本人陳述，已清空並補問，不會採用模型預設地點。")
+    # Keep a copied example's location out of the human-visible title as well.
+    corrected_title = facts.title
+    for location, aliases in location_names.items():
+        if location != facts.location_id:
+            for alias in aliases:
+                corrected_title = corrected_title.replace(alias, "")
+    if corrected_title != facts.title:
+        prefix = ""
+        if facts.location_id and not any(
+            alias in corrected_title for alias in location_names[facts.location_id]
+        ):
+            prefix = location_names[facts.location_id][0]
+        facts.title = (prefix + corrected_title.strip(" ·，：:-"))[:160] or "待確認需求"
+        warnings.append("摘要中的地點與已確認欄位不符，已移除猜測地點；請再次檢查需求表單。")
 
     def quote(field):
         text = getattr(facts.evidence, field)
@@ -303,6 +336,27 @@ def ground(facts: IntakeFacts, original: str) -> list[str]:
     ):
         facts.known_cost_twd = None
         facts.cost_needs_clarification = True
+    # A local model may omit the quote while repeatedly asking about an explicitly
+    # unknown price. Accept only that narrow user declaration, never infer a price.
+    # A subsequent price/total statement must still go through normal grounding.
+    unknown_costs = [
+        match
+        for match in re.finditer(r"費用未知|價格未知|報價未知|還沒報價|尚未報價", original)
+        if not re.search(
+            r"(?:不是|並非|不再|不|非)\s*$", original[max(0, match.start() - 6) : match.start()]
+        )
+    ]
+    if unknown_costs:
+        last_unknown = unknown_costs[-1]
+        later_price = re.search(
+            rf"(?:費用|報價|價格|總價|總共|合計)[^，。；\n]{{0,20}}{NUMBER}"
+            rf"|(?:每人|一人|人均|每份|一份)\s*(?:NT\$|TWD|台幣|新台幣)?\s*{NUMBER}",
+            original[last_unknown.end() :],
+        )
+        if not later_price:
+            facts.known_cost_twd = None
+            facts.cost_needs_clarification = False
+            facts.evidence.cost = last_unknown.group()
     for name, field in (("start", "delay_minutes"), ("duration", "duration_minutes")):
         proof = quote(name)
         number = getattr(facts, field)
