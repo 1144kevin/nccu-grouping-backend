@@ -40,7 +40,7 @@ def check(case, result):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", default="qwen3.5:4b")
-    parser.add_argument("--suite", choices=("standard", "challenge"), default="standard")
+    parser.add_argument("--suite", choices=("standard", "challenge", "blind"), default="standard")
     parser.add_argument("--case", action="append", help="Run only the named synthetic case(s)")
     parser.add_argument("--output", default=".local/evals/stealth-intake-latest.json")
     options = parser.parse_args()
@@ -52,9 +52,11 @@ def main():
             ROOT
             / "tests/fixtures"
             / (
-                "stealth_intake_eval.json"
-                if options.suite == "standard"
-                else "stealth_intake_challenge.json"
+                {
+                    "standard": "stealth_intake_eval.json",
+                    "challenge": "stealth_intake_challenge.json",
+                    "blind": "stealth_intake_blind.json",
+                }[options.suite]
             )
         ).read_text(encoding="utf-8")
     )
@@ -67,7 +69,15 @@ def main():
     for case in cases:
         started = time.monotonic()
         try:
-            result = interpret(IntakeRequest(turns=case["turns"]), provider).model_dump(mode="json")
+            previous = None
+            rounds = []
+            for index in range(len(case["turns"])):
+                parsed = interpret(
+                    IntakeRequest(turns=case["turns"][: index + 1], previous=previous), provider
+                )
+                previous = parsed.facts
+                rounds.append(parsed.model_dump(mode="json"))
+            result = rounds[-1]
             failures = check(case, result)
         except LocalModelError as error:
             result = None
@@ -80,6 +90,7 @@ def main():
                 "passed": not failures,
                 "failures": failures,
                 "result": result,
+                "rounds": rounds if result else [],
             }
         )
         output.parent.mkdir(parents=True, exist_ok=True)

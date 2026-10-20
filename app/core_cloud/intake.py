@@ -9,6 +9,7 @@ from app.core_cloud.grounding import (
     FOREIGN_CURRENCY,
     NUMBER,
     denied_roles,
+    integer,
     minutes_supported,
     money_supported,
     personal_role_evidence,
@@ -178,6 +179,11 @@ tags 只含原文有的中文共同偏好，不要翻譯成英文。飲食限制
 title 用繁體中文簡短重述需求。不猜商家價格、優惠或其他人的意願，只回傳 JSON。"""
 
 PROMPT += """
+更正必須同時更新數值與 evidence，不可引用舊預算再填新數值。
+例如「預算150元」接著「預算上限改成70元」=> budget_max_twd=70，evidence.budget="預算上限改成70元"。
+「能配合一個半小時」=> duration_minutes=90，evidence.duration="能配合一個半小時"。
+角色 evidence 只摘錄最後一段本人表態，例如「想找人取餐，我不取餐也不下單，只願意分食」
+=> roles=["share"]，roles_confirmed=true，evidence.roles="只願意分食"，不要把徵求別人的前句混入。
 evidence 的 budget/cost/start/duration/roles 必須逐字摘錄使用者原句，不能翻譯、補字或引用範例。
 budget 對應預算（包括預算未知原句）；cost 對應已知報價；start 對應多久後開始。
 duration 對應能配合多久；roles 對應本人角色表態。
@@ -306,6 +312,51 @@ def retain_supported_facts(current: IntakeFacts, previous: IntakeFacts, turns: l
 
 def ground(facts: IntakeFacts, original: str) -> list[str]:
     warnings = []
+    # A verbatim quote can still be obsolete. A newer statement about the same
+    # field invalidates the older quote; ask rather than silently revive it.
+    topics = {
+        "budget": r"預算|上限|最多|不超過",
+        "cost": r"費用|報價|價格|總價|每人|免費",
+        "start": r"開始|今晚|明天|改時間|幾點|分鐘後|小時後",
+        "duration": r"持續|配合多久|只能配合|結束",
+        "roles": r"下單|訂餐|取餐|拿餐|優惠券|分食|不負責|沒有角色",
+    }
+    for field, topic in topics.items():
+        evidence = getattr(facts.evidence, field)
+        if evidence and evidence in original:
+            tail = original[original.rfind(evidence) + len(evidence) :]
+            # Only a later clause/turn is a correction, not the remainder of a quote.
+            later = re.split(r"[，。；\n]", tail, maxsplit=1)
+            if len(later) == 2 and re.search(topic, later[1]):
+                setattr(facts.evidence, field, None)
+                warnings.append("部分原句後續已有更新，舊資訊已清空；請核對最新說法。")
+    # Narrow deterministic repair for an explicit numeric budget correction.
+    # No inference for hypothetical amounts, foreign currency, unknown or negation.
+    changes = list(
+        re.finditer(
+            rf"(?:我的)?預算(?:上限)?\s*(?:改成|改為|調整為|調降為)\s*(?:台幣|新台幣)?\s*{NUMBER}\s*(?:元|塊)",
+            original,
+        )
+    )
+    if changes:
+        change = changes[-1]
+        clause = (
+            re.split(r"[，。；\n]", original[: change.start()])[-1]
+            + change.group()
+            + re.split(r"[，。；\n]", original[change.end() :])[0]
+        )
+        tail = original[change.end() :]
+        if (
+            not re.search(r"如果|假如|假設|可能|也許|不確定|不是|不要|並非|[?？]", clause)
+            and not re.search(FOREIGN_CURRENCY, original, re.IGNORECASE)
+            and not re.search(topics["budget"], tail)
+        ):
+            amounts = re.findall(NUMBER, change.group())
+            amount = integer(amounts[-1]) if amounts else None
+            if amount is not None and 0 <= amount <= 100000:
+                facts.budget_max_twd = amount
+                facts.budget_unknown = False
+                facts.evidence.budget = change.group()
     location_names = {
         "main_gate": ("政大正門", "正門"),
         "east_gate": ("政大東側門", "東側門", "東門"),

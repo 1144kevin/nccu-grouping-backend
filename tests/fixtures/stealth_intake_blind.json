@@ -1,0 +1,14 @@
+[
+  {"id":"vague_tonight","turns":["今晚想找人喝熱湯，政大正門，預算100元，願意分食，持續一小時。"],"facts":{"delay_minutes":null},"questions":["delay_minutes"]},
+  {"id":"absolute_tomorrow","turns":["明天下午六點在政大南門喝飲料，預算80元，持續60分鐘，我願意下單。"],"facts":{"delay_minutes":null},"questions":["delay_minutes"]},
+  {"id":"ambiguous_later","turns":["等忙完再吃披薩，地點政大東側門，預算120元，我願意分食。"],"facts":{"delay_minutes":null,"duration_minutes":null},"questions":["delay_minutes","duration_minutes"]},
+  {"id":"duration_only","turns":["想找正餐，政大正門，能配合一個半小時，開始時間未知，預算100元，暫不負責。"],"facts":{"delay_minutes":null,"duration_minutes":90},"questions":["delay_minutes"]},
+  {"id":"withdraw_quote","turns":["想吃披薩，已知每人90元，預算120元，正門，一小時後開始，持續兩小時，願意分食。","更正，報價取消了，費用未知。"],"facts":{"known_cost_twd":null,"cost_needs_clarification":false}},
+  {"id":"retract_start","turns":["正餐，正門，一小時後開始，持續一小時，預算100元，願意下單。","開始時間改為今晚，幾分鐘後還不確定。"],"facts":{"delay_minutes":null},"questions":["delay_minutes"]},
+  {"id":"complex_no_volunteer","turns":["想吃不辣的正餐，政大正門，半小時後開始，持續45分鐘，每人預算100元。想找人取餐，我不取餐也不下單，只願意分食。"],"facts":{"budget_max_twd":100,"delay_minutes":30,"duration_minutes":45},"roles":["share"],"forbidden_roles":["pickup","order"]},
+  {"id":"group_total_uncertain","turns":["披薩整團總價600元，幾個人還不知道，我預算120元，正門，半小時後開始，持續兩小時，我願意下單。"],"facts":{"known_cost_twd":null,"cost_needs_clarification":true},"questions":["cost_basis"]},
+  {"id":"others_not_me","turns":["朋友願意取餐，但我還沒決定負責什麼。想吃正餐，正門，一小時後開始，持續60分鐘，預算100元。"],"facts":{"roles_confirmed":false},"forbidden_roles":["pickup"]},
+  {"id":"budget_change","turns":["想喝飲料，正門，一小時後開始，持續一小時，預算150元，願意分食。","預算上限改成70元，其他不變。"],"facts":{"budget_max_twd":70,"duration_minutes":60,"delay_minutes":60}},
+  {"id":"unknown_not_free","turns":["想吃麵包，費用未知、預算未知，正門，30分鐘後開始，持續60分鐘，我願意分食。"],"facts":{"known_cost_twd":null,"budget_max_twd":null,"budget_unknown":true}},
+  {"id":"latest_role_refusal","turns":["正門吃正餐，一小時後開始，持續兩小時，預算120元，我願意取餐和下單。","我取消取餐，只願意下單。"],"roles":["order"],"forbidden_roles":["pickup"]}
+]
