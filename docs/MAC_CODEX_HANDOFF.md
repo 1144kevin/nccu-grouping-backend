@@ -29,8 +29,8 @@
 
 - Mac Web／Simulator：完整本機模型、語義排序與偷揪成團。
 - iPhone：可信內網 HTTPS、原生 Google 回跳、拼單、手動需求與規則草案成團。
-  **現有 `run_device_core.py` 強制停用模型及語義排序**；實機先驗證 AI 不可用提示與
-  手動備援。不要直接改保護開關來假裝完成實機 AI；若要補實機模型支援，先另列修改方案。
+  `run_device_core.py` 預設停用模型；可依下節的明確設定啟用受保護的本機 AI，
+  仍須實機驗證，不代表 Windows 測試已完成手機驗收。
 
 ## 1. Windows 要搬哪些東西
 
@@ -279,7 +279,7 @@ npm run apple:device
 | 語義判讀（Mac） | 先有合法配對，再點 AI 語義排序與判讀；看理由／待確認事項；不得把相似度說成成功率，判讀也不能自行同意 |
 | 全員確認 | A、B 各表示意願；提交第一版後單人同意不建團；另一人改費用／分工後同意歸零；雙方確認第二版才建立一筆拼單和聊天室 |
 | 成團結果 | 費用與分工採用最新版；雙方收發訊息；重試不多建一團；第三個未參與帳號不能讀聊天室或私人配對 |
-| iPhone 無模型 | 需求理解／語義按鈕呈現不可用或錯誤後可回手動；手動表單、規則草案及全員成團仍可用；沒有付費 fallback |
+| iPhone 模型 | 預設停用時可回手動；明確啟用後測需求理解、語義判讀、超額限制及斷線重試；規則草案與全員同意保留，沒有付費 fallback |
 
 可直接使用以下合成情境；實際時間以服務現在為準，別複製舊日期：
 
@@ -316,6 +316,24 @@ App 已修正衝突刷新時草稿與錯誤遺失；新版需要重新勾選同�
 完整 App 回歸為 139 tests；請依上述文件，在 Mac／iPhone 另行測試同版修改與到期畫面。
 
 ## 8. 每次重新開發的最短指令
+
+### 選用：iPhone 使用 Mac 本機模型
+
+先完成前述 Ollama 模型、HTTPS 憑證信任、Mac 主機 IP 與最多八個精確裝置 IP 設定。
+Ollama 仍僅監聽 `127.0.0.1:11434`，手機只呼叫 `https://Mac私有IP:8443/api/v1`。
+在 Mac 的 `.local/device-test.env` 加入 `DEVICE_AI_ENABLED=true`；模型名稱、
+`STEALTH_AI_PROVIDER=ollama_local`、`STEALTH_OLLAMA_LOCAL_ONLY_CONFIRMED=true`
+與語義啟用設定讀自 Mac 的 `.local/local-ai.env`，不繼承任意 shell 模型開關。
+
+先執行 `python scripts/run_device_core.py` 做檢查；確認憑證 SAN／信任及授權裝置後，
+才由本人執行 `python scripts/run_device_core.py --serve`。不自動改防火牆、憑證或穿透網路。
+API 驗證 Supabase session；裝置入口拒絕非 HTTPS、非名單 IP、代理標頭及重複敏感標頭。
+AI 請求最多 32 KiB，每來源 IP 每分鐘 12 次，整體每分鐘 240 次；模型忙碌可稍後重試。
+原始模型輸入不寫入伺服器日誌，無 API 金鑰放到手機，不能據此宣稱可公開提供服務。
+
+實機驗收：登入後兩輪訪談 → 語義判讀 → 手動核對表單 → 全員同意成團。
+登出不能推論；未授權 IP、HTTP、超額請求被拒；停止 Ollama 只顯示可重試錯誤，
+不得偷偷呼叫付費模型。Apple 原生 Foundation Models 仍未整合。
 
 **Mac Web／AI：**先啟動第 4 節 Ollama → 後端 Terminal 執行
 `.venv/bin/python scripts/run_supabase_core.py` → App Terminal 執行 `npm run dev:supabase`。

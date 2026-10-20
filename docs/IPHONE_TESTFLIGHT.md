@@ -145,7 +145,7 @@ https://axdwbfhrkbovgrbngrrh.supabase.co/auth/v1/callback
 
 實體 iPhone 與異地 TestFlight 測試必須另有經授權的可達 API 方案。後續需準備 HTTPS API、伺服器端的環境與 CORS／代理／登入限流設計，或明確限定的安全裝置開發通道；不能只把目前 localhost adapter 監聽改為 `0.0.0.0` 就當正式後端。本輪不部署，因此尚未完成這一項。
 
-Windows Ollama 也僅供 localhost API 使用。打包 App 不會把 3.3 GB 模型或筆電算力搬到手機；沒有可達的 AI 後端時，TestFlight 使用者不能使用這台筆電的自然語言功能。Apple Foundation Models 的 Swift 原生整合尚未實作，不能宣稱已使用 Apple 裝置模型。
+Ollama 本身仍只接受 localhost；裝置可選用明確啟用、經登入與 HTTPS／裝置名單保護的 Mac API 轉接，設定見 MAC_CODEX_HANDOFF.md「iPhone 使用 Mac 本機模型」。打包 App 不會把模型或筆電算力搬到手機；沒有可達的 AI 後端時，TestFlight 使用者不能使用這台筆電的自然語言功能。Apple Foundation Models 的 Swift 原生整合尚未實作，不能宣稱已使用 Apple 裝置模型。
 
 ## Mac 建置與上傳（本輪未執行）
 

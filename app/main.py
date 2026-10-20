@@ -11,6 +11,8 @@ from app.api.routes.health import router as health_router
 from app.core.cloud_runtime import validate_cloud_settings
 from app.core.cloud_security import CloudSecurity
 from app.core.config import Settings, get_settings
+from app.core.device_security import DeviceSecurity
+from app.core.device_test import validate_device_settings
 from app.core.logging import configure_logging
 from app.stealth.service import StealthError
 
@@ -38,6 +40,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     cloud = settings.core_cloud_enabled or settings.environment == "cloud"
     if cloud:
         validate_cloud_settings(settings)
+    validate_device_settings(settings)
     application = FastAPI(
         title=settings.app_name,
         version="0.1.0",
@@ -54,6 +57,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] if cloud else ["*"],
         allow_headers=["Authorization", "Content-Type", "Idempotency-Key"] if cloud else ["*"],
     )
+    if settings.core_device_test_enabled:
+        application.state.cloud_settings = settings
+        application.add_middleware(DeviceSecurity, settings=settings)
     if cloud:
         application.state.cloud_settings = settings
         application.add_middleware(CloudSecurity, settings=settings)

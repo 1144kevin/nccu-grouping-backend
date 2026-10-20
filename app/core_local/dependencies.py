@@ -24,7 +24,7 @@ _rate_lock = threading.Lock()
 def require_local_mode(request: Request) -> None:
     if getattr(getattr(request, "state", None), "cloud_verified", False):
         return
-    settings = get_settings()
+    settings = getattr(getattr(request, "state", None), "runtime_settings", None) or get_settings()
     if (
         not (settings.core_local_enabled or settings.core_supabase_enabled)
         or settings.environment != "local"

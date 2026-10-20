@@ -21,6 +21,9 @@ def main():
     args = parser.parse_args()
     os.chdir(ROOT)
     profile = dotenv_values(ROOT / ".local/device-test.env")
+    from app.core.device_test import device_ai_environment
+
+    ai = device_ai_environment(profile, dotenv_values(ROOT / ".local/local-ai.env"))
     cloud = dotenv_values(ROOT / ".local/supabase-dev.env")
     host = profile.get("DEVICE_HOST", "")
     clients = [
@@ -43,6 +46,7 @@ def main():
             "CORE_MEDIA_ENABLED": "false",
         }
     )
+    os.environ.update(ai)
     for name in ("SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "CORE_GOOGLE_IOS_ENABLED"):
         if cloud.get(name):
             os.environ[name] = cloud[name]
@@ -67,6 +71,14 @@ def main():
     print(
         "Device profile valid. Certificate trust/SAN and actual iPhone connectivity "
         "require manual verification."
+    )
+    print(
+        "Local AI: "
+        + (
+            "explicitly enabled; authenticated API only"
+            if settings.core_device_ai_enabled
+            else "disabled"
+        )
     )
     print(
         "Default: no listening, firewall changes, certificate installation, "
