@@ -308,6 +308,9 @@ B：我有正餐熱湯與優惠券可分享，政大東側門，從現在60分�
 `docs/RECOMMENDATIONS_UI_ACCEPTANCE.md`，不能抄成 Mac／iPhone 通過。
 最新訪談跨輪保留、三人併發／撤回／過期／重試的 API 與模型驗證見
 `docs/STEALTH_INTERVIEW_RESILIENCE.md`；這也不代表已在真機驗收。
+2026-10-20 另已補做 Windows Web 畫面驗收：兩輪訪談資訊保留、API 中斷後重試、
+三人方案改版同意歸零、全員重新同意後建立單一拼單及三人聊天室。
+實際步驟、清理及限制見上述兩份偷揪文件的新補驗章節；Mac／iPhone 仍須各自驗收。
 
 ## 8. 每次重新開發的最短指令
 
