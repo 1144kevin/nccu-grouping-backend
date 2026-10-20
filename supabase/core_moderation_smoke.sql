@@ -15,6 +15,8 @@ begin
     values(report,u,'fixture-'||report::text,jsonb_build_object('kind','post','target_id',post,'reason','spam',
       'detail','隔離查核回報，沒有真人內容','platform','web','app_version','1.0.0'));
   perform set_config('request.jwt.claims',jsonb_build_object('sub',u,'role','authenticated','session_id',session)::text,true);
+  if (public.core_moderation_access()->>'can_review')::boolean then
+    raise exception 'Ordinary user has operator capability'; end if;
   begin
     perform public.core_moderation('list','{}');
     raise exception 'Expected denial for user_metadata admin';
@@ -24,6 +26,8 @@ begin
     raise exception 'Private review data leaked'; end if;
   -- Temporary operator exists only in this uncommitted, rollback-only transaction.
   insert into public.core_moderators(user_id,enabled,expires_at) values(u,true,now()+interval '1 hour');
+  if not (public.core_moderation_access()->>'can_review')::boolean then
+    raise exception 'Explicit operator missing capability'; end if;
   args:=jsonb_build_object('report_id',report,'expected_version',1,'action','review',
     'public_response','已開始查核，待核對內容。','internal_note','僅測試管理者可讀','request_key',request);
   result:=public.core_moderation('review',args);
@@ -44,6 +48,8 @@ begin
   if result::text like '%僅測試管理者可讀%' or result#>>'{items,0,status}'<>'resolved' then
     raise exception 'Reporter response incorrect'; end if;
   update public.core_moderators set expires_at=now()-interval '1 second' where user_id=u;
+  if (public.core_moderation_access()->>'can_review')::boolean then
+    raise exception 'Expired operator retains capability'; end if;
   begin
     perform public.core_moderation('list','{}');
     raise exception 'Expected expired operator denial';
