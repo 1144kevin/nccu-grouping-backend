@@ -1,5 +1,7 @@
 # 本機程式 + Supabase 開發專案
 
+最新功能狀態請先看 [2026-10-20 訪談／申訴／向量候選發現](SEMANTIC_DISCOVERY_AND_APPEALS.md)。下文保留各階段驗收歷史，較早的「尚未實作」描述不代表最新狀態。
+
 前端與 FastAPI 仍只在這台 Windows 的 localhost 執行。帳號使用 Supabase Auth，拼單資料使用開發專案 `axdwbfhrkbovgrbngrrh` 的 PostgreSQL；沒有部署，也沒有啟用付費 AI、SMTP 或其他付費服務。
 
 Google 登入與本機回呼已加入，使用者已確認 Google 真實登入成功。設定參考見 [Google Cloud／OAuth 設定](GOOGLE_LOGIN_SETUP.md)。

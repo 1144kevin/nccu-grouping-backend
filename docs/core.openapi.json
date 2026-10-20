@@ -3,7 +3,7 @@
   "info": {
     "title": "政缺一咖 API",
     "version": "0.1.0",
-    "description": "Local FastAPI login/grouping API with separate SQLite and Supabase development modes. Supabase mode supports email auth, Google web/native iOS PKCE, session refresh, group text chat with read receipts, request activity, public profiles, order history, scoped search, account preferences, private reports, saved post reminders, private verified post images, inbox archive/mute, scoped demo cleanup and database clock synchronization. Stealth intake supports optional local-only structured model extraction and follow-up; matches include free deterministic cost/role drafts, editable final terms and atomic formation after unanimous versioned consent. Optional local semantic ranking reorders authorized summaries without changing consent. Loopback by default. Explicit device tests require private direct TLS and exact client IPs. A separate validated single-instance cloud runtime supports trusted HTTPS ingress; development demo cleanup and local-model intake are unavailable in cloud mode."
+    "description": "Local FastAPI login/grouping API with separate SQLite and Supabase development modes. Supabase mode supports email auth, Google web/native iOS PKCE, session refresh, group text chat with read receipts, request activity, public profiles, order history, scoped search, account preferences, private reports, saved post reminders, private verified post images, inbox archive/mute, scoped demo cleanup and database clock synchronization. Stealth intake supports optional local-only structured model extraction and follow-up; matches include free deterministic cost/role drafts, editable final terms and atomic formation after unanimous versioned consent. Optional local semantic ranking reorders authorized summaries without changing consent. Local signal embeddings support private cloud cosine discovery, with live eligibility and unanimous consent still enforced. Authorized moderation supports private context, message masking, reported-post cancellation and versioned private appeals. Loopback by default. Explicit device tests require private direct TLS and exact client IPs. A separate validated single-instance cloud runtime supports trusted HTTPS ingress; development demo cleanup and local-model intake are unavailable in cloud mode."
   },
   "paths": {
     "/api/v1/development/readiness": {
@@ -2311,6 +2311,236 @@
         }
       }
     },
+    "/api/v1/moderation/reports/{report_id}/context": {
+      "get": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Report Context",
+        "operationId": "report_context_api_v1_moderation_reports__report_id__context_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Report Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/moderation/appeals/mine": {
+      "get": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "My Appeals",
+        "operationId": "my_appeals_api_v1_moderation_appeals_mine_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/moderation/decisions/mine": {
+      "get": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "My Decisions",
+        "operationId": "my_decisions_api_v1_moderation_decisions_mine_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/moderation/reports/{report_id}/appeal": {
+      "post": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Appeal",
+        "operationId": "appeal_api_v1_moderation_reports__report_id__appeal_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Report Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppealInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/moderation/appeals": {
+      "get": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Appeals",
+        "operationId": "appeals_api_v1_moderation_appeals_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/moderation/appeals/{appeal_id}/review": {
+      "post": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Review Appeal",
+        "operationId": "review_appeal_api_v1_moderation_appeals__appeal_id__review_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "appeal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Appeal Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppealReview"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/search": {
       "get": {
         "tags": [
@@ -2822,6 +3052,30 @@
         ]
       }
     },
+    "/api/v1/stealth-cloud/matches/discover": {
+      "post": {
+        "tags": [
+          "stealth-supabase"
+        ],
+        "summary": "Discover Matches",
+        "operationId": "discover_matches_api_v1_stealth_cloud_matches_discover_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/stealth-cloud/matches/{proposal_id}/decision": {
       "post": {
         "tags": [
@@ -3152,6 +3406,67 @@
           "ready_to_submit"
         ],
         "title": "AgentTermsDraft"
+      },
+      "AppealInput": {
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 12,
+            "title": "Request Key"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 10,
+            "title": "Detail"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_key",
+          "detail"
+        ],
+        "title": "AppealInput"
+      },
+      "AppealReview": {
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 12,
+            "title": "Request Key"
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Version"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "resolved",
+              "dismissed"
+            ],
+            "title": "Status"
+          },
+          "response": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 5,
+            "title": "Response"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_key",
+          "expected_version",
+          "status",
+          "response"
+        ],
+        "title": "AppealReview"
       },
       "AssetView": {
         "properties": {
@@ -6429,6 +6744,12 @@
       },
       "ReviewInput": {
         "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 12,
+            "title": "Request Key"
+          },
           "expected_version": {
             "type": "integer",
             "minimum": 1.0,
@@ -6440,7 +6761,8 @@
               "review",
               "resolve",
               "dismiss",
-              "cancel_post"
+              "cancel_post",
+              "hide_message"
             ],
             "title": "Action"
           },
@@ -6455,20 +6777,15 @@
             "maxLength": 1000,
             "title": "Internal Note",
             "default": ""
-          },
-          "request_key": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Request Key"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
+          "request_key",
           "expected_version",
           "action",
-          "public_response",
-          "request_key"
+          "public_response"
         ],
         "title": "ReviewInput"
       },

@@ -353,3 +353,16 @@ AI 請求最多 32 KiB，每來源 IP 每分鐘 12 次，整體每分鐘 240 次
 請 Mac Codex 最後回報「已執行項目／待本人操作／實際失敗與修正／尚未驗收」；
 若修改程式，先跑相關測試，依功能分 commit 且不 push。
 到此停止，不執行 release profile、Archive 上傳、EAS build／submit 或 TestFlight 發布。
+
+
+## 2026-10-20：訪談、申訴與向量候選發現更新
+
+先讀 `docs/SEMANTIC_DISCOVERY_AND_APPEALS.md`。開發 Supabase 已有私有 pgvector 與申訴 RPC，
+不用在 Mac 重套 migration，也不用更換金鑰。使用現有 local-ai.env 的免費 Ollama 模型。
+各隔離帳號在偷揪結果按「AI 搜尋新配對機會」建立自己的向量；首次對方尚未索引可能沒有結果，
+30秒後重試。新候選仍須全員同版同意。沒有受信任的全站回填 worker，也沒有付費 fallback。
+
+`CORE_MODERATION_ENABLED=true` 仍須在 Mac 的 `.local/moderation.env` 明確設定；授權與到期時間
+在開發資料庫，不能自行增加管理者。幫助與回報可進入「申訴與覆核」及「內測資料與使用說明」。
+政策使用假團隊／不可收信的 `.invalid` 信箱，不能對外當作正式政策；保留期限只是待實作目標。
+本輪 Windows 驗證為本機測試、模型回歸與雲端回滾交易，尚未完成手機端這些新入口的實機驗收。
