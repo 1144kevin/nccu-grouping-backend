@@ -306,6 +306,8 @@ B：我有正餐熱湯與優惠券可分享，政大東側門，從現在60分�
 未執行寫未執行，缺環境寫阻擋原因；測完取消／整理自己新建的測試團，不破壞原資料。
 既有 Windows Web 證據參考 `docs/STEALTH_AI_UI_ACCEPTANCE.md` 與
 `docs/RECOMMENDATIONS_UI_ACCEPTANCE.md`，不能抄成 Mac／iPhone 通過。
+最新訪談跨輪保留、三人併發／撤回／過期／重試的 API 與模型驗證見
+`docs/STEALTH_INTERVIEW_RESILIENCE.md`；這也不代表已在真機驗收。
 
 ## 8. 每次重新開發的最短指令
 
