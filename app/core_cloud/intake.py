@@ -19,20 +19,6 @@ from app.stealth.provider_contracts import ExtractionTransport
 from app.stealth.schemas import Category, Location, Money, Role, SignalKind, StrictModel, Tag
 
 
-class IntakeRequest(StrictModel):
-    turns: list[str] = Field(min_length=1, max_length=8)
-
-    @model_validator(mode="after")
-    def bounded_conversation(self):
-        if any(not turn.strip() or len(turn) > 1000 or "\0" in turn for turn in self.turns):
-            raise ValueError("invalid interview turn")
-        if sum(map(len, self.turns)) > 4000:
-            raise ValueError("interview too long")
-        for turn in self.turns:
-            turn.encode("utf-8")
-        return self
-
-
 class IntakeEvidence(StrictModel):
     budget: str | None = Field(default=None, max_length=160)
     cost: str | None = Field(default=None, max_length=160)
@@ -78,6 +64,21 @@ class IntakeFacts(StrictModel):
 class IntakeQuestion(StrictModel):
     field: str
     text: str
+
+
+class IntakeRequest(StrictModel):
+    turns: list[str] = Field(min_length=1, max_length=8)
+    previous: IntakeFacts | None = None
+
+    @model_validator(mode="after")
+    def bounded_conversation(self):
+        if any(not turn.strip() or len(turn) > 1000 or "\0" in turn for turn in self.turns):
+            raise ValueError("invalid interview turn")
+        if sum(map(len, self.turns)) > 4000:
+            raise ValueError("interview too long")
+        for turn in self.turns:
+            turn.encode("utf-8")
+        return self
 
 
 class IntakeResult(StrictModel):
@@ -234,9 +235,73 @@ def interpret(value: IntakeRequest, provider: ExtractionTransport) -> IntakeResu
         )
     )
     warnings = ground(facts, original)
+    if value.previous is not None and len(value.turns) > 1:
+        facts = retain_supported_facts(facts, value.previous, value.turns)
+        warnings.extend(ground(facts, original))
     result = review(facts, provider.model)
     result.warnings.extend(warnings)
     return result
+
+
+def retain_supported_facts(current: IntakeFacts, previous: IntakeFacts, turns: list[str]):
+    """Client context is a draft, never trusted consent. Re-ground it before reuse.
+
+    A new mention of a topic always wins, including uncertainty and negation. Missing
+    new model output for that topic is a question, not permission to resurrect old facts.
+    No conversation or snapshot is saved on the server.
+    """
+    latest = turns[-1]
+    if re.search(r"重新開始|全部重來|清空|忘記前面|取消之前", latest):
+        return current
+    prior = previous.model_copy(deep=True)
+    prior_text = "\n".join(turns[:-1])
+    ground(prior, prior_text)
+    prior.tags = [tag for tag in prior.tags if tag in prior_text]
+    prior.dietary_requirements = [tag for tag in prior.dietary_requirements if tag in prior_text]
+    groups = [
+        (r"預算|上限|最多|不超過|元以內|元以下", ("budget_max_twd", "budget_unknown"), "budget"),
+        (
+            r"費用|價格|報價|總價|免費|每人\s*\d|一人\s*\d",
+            ("known_cost_twd", "cost_needs_clarification"),
+            "cost",
+        ),
+        (r"後|開始|現在|時間|今晚|明天|幾點", ("delay_minutes",), "start"),
+        (r"持續|配合|多久|長度|期間|結束|時間", ("duration_minutes",), "duration"),
+        (
+            r"下單|訂餐|取餐|拿餐|優惠券|分食|分享|角色|願意|負責",
+            ("roles", "roles_confirmed"),
+            "roles",
+        ),
+        (r"正門|東側門|東門|南門|地點|集合|改到|在哪|車站", ("location_id",), None),
+        (
+            r"正餐|披薩|飲料|麵包|零食|餐點|換成|改成|改要|不吃",
+            ("category", "acceptable_categories"),
+            None,
+        ),
+        (r"我有|我需要|我想|資源|提供|計畫|打算|改成|改要", ("kind",), None),
+        (r"標籤|偏好|喜歡|不喜歡", ("tags",), None),
+        (r"飲食|過敏|素食|花生|忌口|不能吃|不吃", ("dietary_requirements",), None),
+    ]
+    for topic, fields, evidence in groups:
+        if re.search(topic, latest):
+            continue
+        if evidence:
+            quote = getattr(prior.evidence, evidence)
+            if quote and re.search(topic, prior_text[prior_text.rfind(quote) + len(quote) :]):
+                continue  # A stale client snapshot cannot undo an intervening correction.
+        known = any(
+            getattr(prior, field) is not None
+            and getattr(prior, field) is not False
+            and getattr(prior, field) != []
+            for field in fields
+        )
+        if not known and not (evidence and getattr(prior.evidence, evidence)):
+            continue
+        for field in fields:
+            setattr(current, field, getattr(prior, field))
+        if evidence:
+            setattr(current.evidence, evidence, getattr(prior.evidence, evidence))
+    return current
 
 
 def ground(facts: IntakeFacts, original: str) -> list[str]:
@@ -374,11 +439,17 @@ def ground(facts: IntakeFacts, original: str) -> list[str]:
             warnings.append("角色原句可能是在詢問、假設或請別人幫忙，已保留為待補問。")
     else:
         proposed = facts.roles
+        proof_start = original.rfind(roles)
+        before_proof = original[:proof_start]
+        clause_start = max((before_proof.rfind(mark) for mark in "，。；\n"), default=-1) + 1
+        # Keep negation immediately before a short quote, while allowing an explicit
+        # later change of mind to supersede an older role refusal.
+        role_scope = original[clause_start:]
         facts.roles = list(
             dict.fromkeys(
                 role
                 for role in proposed
-                if role not in denied_roles(original) and role in supported_roles(roles)
+                if role not in denied_roles(role_scope) and role in supported_roles(roles)
             )
         )
         if proposed and not facts.roles:

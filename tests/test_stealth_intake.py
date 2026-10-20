@@ -23,6 +23,78 @@ def test_missing_facts_are_questions_not_defaults_or_assumed_free():
     assert result.facts.known_cost_twd is None
 
 
+def test_follow_up_retains_grounded_budget_time_and_roles_when_model_forgets():
+    from app.core_cloud.intake import retain_supported_facts
+
+    prior = complete(
+        evidence={
+            "budget": "預算120元",
+            "start": "一小時後",
+            "duration": "持續兩小時",
+            "roles": "我願意分食",
+        }
+    )
+    turns = ["政大正門，預算120元，一小時後，持續兩小時，我願意分食", "標籤是晚餐"]
+    result = retain_supported_facts(IntakeFacts(title="晚餐"), prior, turns)
+    assert result.budget_max_twd == 120
+    assert result.delay_minutes == 60 and result.duration_minutes == 120
+    assert result.roles == ["share"] and result.roles_confirmed
+    assert result.location_id == "main_gate"
+
+
+@pytest.mark.parametrize("latest", ["預算改成80元", "預算未知"])
+def test_new_topic_cannot_resurrect_previous_budget(latest):
+    from app.core_cloud.intake import retain_supported_facts
+
+    prior = complete(evidence={"budget": "預算120元"})
+    result = retain_supported_facts(IntakeFacts(title="更正"), prior, ["預算120元", latest])
+    assert result.budget_max_twd is None
+
+
+def test_unsupported_client_snapshot_does_not_become_a_confirmed_fact():
+    from app.core_cloud.intake import retain_supported_facts
+
+    prior = complete(evidence={"budget": "我沒說過預算120元", "roles": "我願意分食"})
+    result = retain_supported_facts(IntakeFacts(title="補充"), prior, ["想吃正餐", "標籤晚餐"])
+    assert result.budget_max_twd is None and result.roles == []
+    assert result.location_id is None
+
+
+def test_restart_does_not_reuse_the_previous_interview():
+    from app.core_cloud.intake import retain_supported_facts
+
+    result = retain_supported_facts(
+        IntakeFacts(title="重來"), complete(), ["預算120元", "全部重來"]
+    )
+    assert result.budget_max_twd is None and result.location_id is None
+
+
+def test_stale_snapshot_cannot_undo_an_earlier_budget_correction():
+    from app.core_cloud.intake import retain_supported_facts
+
+    prior = complete(evidence={"budget": "預算120元"})
+    result = retain_supported_facts(
+        IntakeFacts(title="補充"), prior, ["預算120元", "預算改80元", "我願意分食"]
+    )
+    assert result.budget_max_twd is None
+
+
+@pytest.mark.parametrize(
+    "original,evidence,expected",
+    [
+        ("我不取餐。\n現在我願意取餐", "我願意取餐", ["pickup"]),
+        ("我不願意取餐", "願意取餐", []),
+        ("我願意取餐。\n改成不取餐", "我願意取餐", []),
+    ],
+)
+def test_latest_role_change_keeps_negation_attached_to_the_quote(original, evidence, expected):
+    from app.core_cloud.intake import ground
+
+    facts = complete(roles=["pickup"], evidence={"roles": evidence})
+    ground(facts, original)
+    assert facts.roles == expected
+
+
 def complete(**changes):
     return IntakeFacts.model_validate(
         {
