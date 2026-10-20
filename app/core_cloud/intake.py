@@ -347,7 +347,10 @@ def ground(facts: IntakeFacts, original: str) -> list[str]:
         )
         tail = original[change.end() :]
         if (
-            not re.search(r"如果|假如|假設|可能|也許|不確定|不是|不要|並非|[?？]", clause)
+            not re.search(
+                r"如果|假如|假設|可能|也許|不確定|不是|不要|並非|朋友|同學|室友|別人|對方|他們|她們|(?:他|她)的|[?？]",
+                clause,
+            )
             and not re.search(FOREIGN_CURRENCY, original, re.IGNORECASE)
             and not re.search(topics["budget"], tail)
         ):

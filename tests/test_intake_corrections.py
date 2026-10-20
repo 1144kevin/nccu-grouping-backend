@@ -36,7 +36,14 @@ def test_explicit_numeric_budget_correction_uses_latest_literal():
 
 @pytest.mark.parametrize(
     "text",
-    ["如果預算改成70元呢？", "不要預算改成70元", "預算改成70元，預算仍未知", "預算改成70元美元"],
+    [
+        "如果預算改成70元呢？",
+        "不要預算改成70元",
+        "預算改成70元，預算仍未知",
+        "預算改成70元美元",
+        "朋友預算改成70元",
+        "她的預算改成70元",
+    ],
 )
 def test_budget_repair_never_infers_hypothetical_negated_or_superseded_value(text):
     facts = IntakeFacts(title="需求")
