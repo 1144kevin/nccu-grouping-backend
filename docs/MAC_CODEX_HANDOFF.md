@@ -378,3 +378,13 @@ fixture 已清除，無須在 Mac 再清理。原有127筆拼單／243則訊息�
 只建置本機測試 image，不 push 或部署。整個 Supabase／Auth／Storage 災難復原仍未驗收。
 合成備份在 Windows ignored `.local/backups/synthetic-graph.json`，不在 Git bundle；若要重跑相同
 還原，可另外只搬這個合成檔，使用 rehearse_backup 產生 TEMP／ROLLBACK SQL，不搬帳密檔。
+
+### 後續：弱點掃描與本機空白還原
+
+先讀 `docs/IMAGE_VULNERABILITY_SCAN.md` 與 `docs/POSTGRES_RESTORE_REHEARSAL.md`。
+Windows已實作 `python -m scripts.scan_container --run` 與
+`python -m scripts.rehearse_postgres_restore --run`；只用本機 Docker，不接受雲端還原目標。
+掃描 Critical修至0，但仍有44筆無可用修補版本的 Debian High，release gate為blocked，
+不可把掃描完成當成允許部署。Mac M1應另產生ARM64掃描與runtime證據。
+隔離還原只驗合成core/chat基礎schema，不是整個現行Supabase的備份。
+新依賴請用已提交uv.lock同步；不要搬Windows的`.venv`、映像封存、DB資料或私有原始報告。

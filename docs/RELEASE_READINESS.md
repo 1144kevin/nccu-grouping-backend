@@ -90,3 +90,9 @@ Mac setup／檢查、只含已提交歷史的 Git bundle 產生器、模擬器�
 ## Linux 容器實際驗收更新（2026-10-20）
 
 WSL2／Docker Desktop 安裝完成，不需先重開機。498項後端回歸通過，App未修改；未部署、未push。詳見 [Windows容器重跑](WINDOWS_CONTAINER_SETUP.md) 與 [驗收證據](evidence/linux-container-20261020.json)。amd64通過不代表Mac M1 ARM64或公開代理已驗證。
+
+## 映像掃描與隔離還原更新（2026-10-20）
+
+免費本機 Trivy 掃描已完成，PyJWT／Mako與基底可用更新已修補，Critical為0、Python依賴命中為0、秘密值命中為0；仍有44筆無可用修補版本的 Debian High，release gate維持blocked，不能視為公開上線核可。見 [映像檢查與明細](IMAGE_VULNERABILITY_SCAN.md)。
+
+本機 PostgreSQL custom dump／空白還原、來源移除、RLS與聊天RPC、約束／觸發器、損壞檔與非空目標拒絕均通過。只涵蓋合成 core/chat 基礎schema，沒有連線或覆蓋 Supabase，不代表完整 Auth／Storage／偷揪與向量資料災難復原。見 [還原範圍與重跑](POSTGRES_RESTORE_REHEARSAL.md)。完整後端506項測試通過，兩項既有依賴警告，App未修改。

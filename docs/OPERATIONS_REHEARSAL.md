@@ -84,4 +84,6 @@ python -m scripts.rehearse_container --build
 
 **後續更新：已依授權安裝 WSL2／Docker，Linux amd64 image 實際建置與離線驗收通過。** 不需先重開機；原生依賴載入、非root／唯讀限制、服務啟動、健康檢查與 SIGTERM 關閉均通過。完整後端498項回歸通過。細節見 [Windows 安裝與重跑](WINDOWS_CONTAINER_SETUP.md)、[本輪結果](evidence/linux-container-20261020.json)。前段494項為先前量測當時的回歸紀錄。
 
-仍待：Mac M1 ARM64 image／實機驗證、image 弱點掃描、完整獨立 Supabase 還原、較長持續負載與正式容量評估。沒有部署或使用付費服務。
+後續已完成 [映像弱點檢查](IMAGE_VULNERABILITY_SCAN.md) 與 [本機 PostgreSQL 隔離還原](POSTGRES_RESTORE_REHEARSAL.md)。Critical 已修至0；仍有44筆 Debian High 命中，無可用修補版本，發布門檻維持 blocked。25筆合成拼單的真正 custom dump 已在來源移除後還原到空白容器，RLS／RPC／約束與觸發器驗收通過。完整後端506項測試通過。
+
+仍待：Mac M1 ARM64 image／實機驗證、剩餘基底弱點處理、完整獨立 Supabase Auth／Storage 還原、較長持續負載與正式容量評估。沒有部署或使用付費服務。

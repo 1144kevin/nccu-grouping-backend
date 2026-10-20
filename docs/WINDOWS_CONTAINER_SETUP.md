@@ -37,4 +37,4 @@ $env:Path = "$env:LOCALAPPDATA\Programs\DockerDesktop\resources\bin;" + $env:Pat
 
 已提交的無憑證結果：`docs/evidence/linux-container-20261020.json`。重跑結果寫 `.local/container-rehearsal.json`；指令失敗輸出留 `.local/container-command-failure.log`，不要未檢閱就公開這個私有診斷檔。
 
-目前驗收是 **Windows 上的 Linux amd64 本機容器**；不代表 Mac M1 ARM64、iPhone、公開 HTTPS 代理、真人登入或正式雲端部署已驗收。映像弱點掃描、完整 Supabase Auth／Storage 災難復原與更長時間容量測試仍待另做。Docker／WSL 安裝是這台電腦的環境，不會隨 commit 自動安裝到 Mac。
+目前驗收是 **Windows 上的 Linux amd64 本機容器**；不代表 Mac M1 ARM64、iPhone、公開 HTTPS 代理、真人登入或正式雲端部署已驗收。後續 [映像弱點掃描](IMAGE_VULNERABILITY_SCAN.md) 與 [合成本機還原](POSTGRES_RESTORE_REHEARSAL.md) 已完成；仍有未修補 Debian High，完整 Supabase Auth／Storage 災難復原與更長時間容量測試仍待另做。Docker／WSL 安裝是這台電腦的環境，不會隨 commit 自動安裝到 Mac。
