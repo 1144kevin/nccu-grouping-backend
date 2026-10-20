@@ -373,7 +373,7 @@ AI 請求最多 32 KiB，每來源 IP 每分鐘 12 次，整體每分鐘 240 次
 先讀 `docs/OPERATIONS_REHEARSAL.md` 與 `docs/evidence/operations-20261020.json`。
 Windows 已完成實際 Supabase 5,000筆資料、兩分鐘120個請求、最後名額與合成資料 TEMP 還原；
 fixture 已清除，無須在 Mac 再清理。原有127筆拼單／243則訊息保留。
-Linux image 尚未建置：Windows 沒有可用 Docker／WSL。在 Mac 已有本機 Linux Docker engine 時，
+後續已在 Windows 安裝 WSL2／Docker，Linux amd64 建置、原生依賴、預設服務 healthcheck與 SIGTERM 關閉通過；見 docs/WINDOWS_CONTAINER_SETUP.md。Mac M1 ARM64仍須重跑：在 Mac 已有本機 Linux Docker engine 時，
 先 `python -m scripts.rehearse_container`，再 `python -m scripts.rehearse_container --build`。
 只建置本機測試 image，不 push 或部署。整個 Supabase／Auth／Storage 災難復原仍未驗收。
 合成備份在 Windows ignored `.local/backups/synthetic-graph.json`，不在 Git bundle；若要重跑相同

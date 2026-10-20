@@ -83,6 +83,10 @@ Mac setup／檢查、只含已提交歷史的 Git bundle 產生器、模擬器�
 
 實際 Supabase 1,000／5,000筆隔離資料短測及兩分鐘120請求通過，兩連線搶最後一席未超收。
 合成應用圖資料已匯出、本機校驗並於來源刪除後還原至 PostgreSQL TEMP 表；不是完整災難復原。
-Windows 缺 Docker／可用 WSL，Linux image 仍未實際建置；完整 Auth／Storage／角色還原仍待做。
+後續已安裝 WSL2／Docker，Linux amd64 建置、原生依賴、healthcheck、未登入401與 SIGTERM exit0通過；完整 Auth／Storage／角色還原仍待做。
 新增演練工具後完整後端494測試通過；App 本輪未修改。
 詳見 [實際數字、限制與重跑方式](OPERATIONS_REHEARSAL.md)。
+
+## Linux 容器實際驗收更新（2026-10-20）
+
+WSL2／Docker Desktop 安裝完成，不需先重開機。498項後端回歸通過，App未修改；未部署、未push。詳見 [Windows容器重跑](WINDOWS_CONTAINER_SETUP.md) 與 [驗收證據](evidence/linux-container-20261020.json)。amd64通過不代表Mac M1 ARM64或公開代理已驗證。

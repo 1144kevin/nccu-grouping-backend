@@ -78,10 +78,10 @@ python -m scripts.rehearse_container
 python -m scripts.rehearse_container --build
 ```
 
-第一個只檢查；第二個才建置並測試目前 Dockerfile。只接受 default context 的本機 socket 與 Linux engine，拒絕 TCP／SSH／遠端 daemon。用 Buildx default builder 載入本機，不 push；runtime 使用非 root UID10001、唯讀根檔案系統、移除 capabilities、限制 CPU／記憶體、無網路、無 host mount、無發布埠。以假公開設定驗證 import、health 200 與未登入貼文401，最後清掉本輪唯一命名的 image／container，不執行 prune 或刪除 volumes。
+第一個只檢查；第二個才建置並測試目前 Dockerfile。只接受 default context 的本機 socket 與 Linux engine，拒絕 TCP／SSH／遠端 daemon。用 Buildx default builder 載入本機，不 push；runtime 使用非 root UID10001、唯讀根檔案系統、移除 capabilities、限制 CPU／記憶體、無網路、無 host mount、無發布埠。以假公開設定驗證 import、health 200 與未登入貼文401，再實際啟動預設服務、等待 HEALTHCHECK healthy、驗證 SIGTERM exit0，最後清掉本輪唯一命名的 image／container，不執行 prune 或刪除 volumes。
 
 多階段 image 沿用依賴 builder 與最小 runtime 的做法，參考 [Docker 官方說明](https://docs.docker.com/build/building/multi-stage/)。Dockerfile 與 `.dockerignore` 不含 `.local`、Git、帳密或測試備份。
 
-**此 Windows 沒有 Docker，WSL 也未安裝可用 Linux，因此本輪報告是 blocked／built=false。** 沒有替電腦安裝虛擬化元件、重開機或聲稱已驗證 Linux wheel。這項需在具備本機容器引擎的 Windows／Mac／Linux 重跑，才能完成實際建置驗收。
+**後續更新：已依授權安裝 WSL2／Docker，Linux amd64 image 實際建置與離線驗收通過。** 不需先重開機；原生依賴載入、非root／唯讀限制、服務啟動、健康檢查與 SIGTERM 關閉均通過。完整後端498項回歸通過。細節見 [Windows 安裝與重跑](WINDOWS_CONTAINER_SETUP.md)、[本輪結果](evidence/linux-container-20261020.json)。前段494項為先前量測當時的回歸紀錄。
 
-待補：真正 Linux image 建置、native libraries／架構與 image 漏洞檢查、原生啟動／關閉訊號驗證、完整獨立 Supabase 還原、較長持續負載與正式容量評估。以上均未部署。
+仍待：Mac M1 ARM64 image／實機驗證、image 弱點掃描、完整獨立 Supabase 還原、較長持續負載與正式容量評估。沒有部署或使用付費服務。

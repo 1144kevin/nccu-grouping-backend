@@ -1,0 +1,41 @@
+{
+  "status": "passed",
+  "built": true,
+  "deployed": false,
+  "pushed": false,
+  "reason": "Local Linux engine available",
+  "smoke": {
+    "uid": 10001,
+    "health": 200,
+    "anonymous_posts": 401,
+    "network": "none",
+    "architecture": "x86_64",
+    "python": "3.13.16",
+    "native_modules": [
+      "asyncpg",
+      "PIL._imaging",
+      "cryptography.hazmat.bindings._rust",
+      "pydantic_core._pydantic_core",
+      "uvloop",
+      "httptools"
+    ]
+  },
+  "lifecycle": {
+    "health": 200,
+    "anonymous_posts": 401,
+    "docker_healthcheck": "healthy",
+    "sigterm_exit": 0,
+    "oom_killed": false
+  },
+  "checked_on": "2026-10-20",
+  "windows_build": "26300.9711",
+  "wsl": "3.0.3.0",
+  "docker_desktop": "4.96.0",
+  "docker_engine": "29.9.1",
+  "reboot_performed": false,
+  "backend_regression": {
+    "passed": 498,
+    "existing_warnings": 2
+  },
+  "scope": "local Linux amd64 synthetic offline runtime; no authenticated Supabase requests; no ARM64 or vulnerability scan"
+}
