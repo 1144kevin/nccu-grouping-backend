@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Response
 from pydantic import Field, field_validator
 
 from app.core.config import get_settings
+from app.core_cloud.discovery import discover
 from app.core_cloud.intake import IntakeRequest, IntakeResult
 from app.core_cloud.semantic import SemanticCloudMatches, SemanticRequest, semantic_cloud_matches
 from app.core_cloud.stealth import (
@@ -114,6 +115,15 @@ def matches(service: Cloud):
 def semantic_matches(value: SemanticRequest, service: Cloud):
     matcher = local_semantic_matcher(service.store.settings)
     return semantic_cloud_matches(service, matcher, value.review_limit)
+
+
+@router.post("/matches/discover")
+def discover_matches(service: Cloud):
+    matcher = local_semantic_matcher(service.store.settings)
+    try:
+        return discover(service, matcher.embeddings)
+    except LocalModelError as exc:
+        raise HTTPException(503, str(exc)) from exc
 
 
 @router.post("/matches/{proposal_id}/decision", response_model=CloudMatch)

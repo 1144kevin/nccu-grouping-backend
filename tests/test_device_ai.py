@@ -37,7 +37,15 @@ def test_device_ai_opt_in_is_explicit_and_never_inherited():
 
 
 @pytest.mark.asyncio
-async def test_device_ai_boundary_rejects_before_inference():
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/stealth-cloud/intake",
+        "/api/v1/stealth-cloud/matches/semantic",
+        "/api/v1/stealth-cloud/matches/discover",
+    ],
+)
+async def test_device_ai_boundary_rejects_before_inference(path):
     calls = []
 
     async def inner(scope, receive, send):
@@ -47,7 +55,6 @@ async def test_device_ai_boundary_rejects_before_inference():
     gate = DeviceSecurity(inner, ai_settings())
     transport = httpx.ASGITransport(app=gate, client=("192.168.1.20", 1234))
     async with httpx.AsyncClient(transport=transport, base_url="https://192.168.1.10:8443") as c:
-        path = "/api/v1/stealth-cloud/intake"
         assert (await c.post(path, json={})).status_code == 401
         assert (
             await c.post(path, headers={"Authorization": "Bearer fake"}, content=b"x" * 32769)
@@ -71,7 +78,15 @@ async def test_device_ai_boundary_rejects_before_inference():
 
 
 @pytest.mark.asyncio
-async def test_device_ai_disabled_but_manual_flow_is_available():
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/stealth-cloud/intake",
+        "/api/v1/stealth-cloud/matches/semantic",
+        "/api/v1/stealth-cloud/matches/discover",
+    ],
+)
+async def test_device_ai_disabled_but_manual_flow_is_available(path):
     async def inner(scope, receive, send):
         await JSONResponse({"manual": True})(scope, receive, send)
 
@@ -80,5 +95,5 @@ async def test_device_ai_disabled_but_manual_flow_is_available():
         transport=httpx.ASGITransport(app=gate, client=("192.168.1.20", 1234)),
         base_url="https://192.168.1.10:8443",
     ) as c:
-        assert (await c.post("/api/v1/stealth-cloud/intake")).status_code == 503
+        assert (await c.post(path)).status_code == 503
         assert (await c.post("/api/v1/stealth-cloud/signals")).status_code == 200

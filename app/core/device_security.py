@@ -16,7 +16,11 @@ class DeviceSecurity:
         self.app, self.settings = app, settings
         self.quota = WindowQuota(max_keys=64)
         prefix = settings.api_v1_prefix + "/stealth-cloud"
-        self.ai_paths = {prefix + "/intake", prefix + "/matches/semantic"}
+        self.ai_paths = {
+            prefix + "/intake",
+            prefix + "/matches/semantic",
+            prefix + "/matches/discover",
+        }
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "websocket":
