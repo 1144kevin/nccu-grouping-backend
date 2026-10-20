@@ -44,9 +44,12 @@ def export():
     manifest = destination / "manifest.json"
     manifest.write_text(json.dumps(records, indent=2) + "\n", encoding="utf-8")
     shutil.copyfile(ROOT / "scripts/import_mac_handoff.py", destination / "import_mac_handoff.py")
+    shutil.copyfile(ROOT / "docs/MAC_CODEX_HANDOFF.md", destination / "MAC_CODEX_HANDOFF.md")
     (destination / "START_HERE.txt").write_text(
-        "On Mac: python3 import_mac_handoff.py --destination ~/projects --apply\n"
-        "Then read ~/projects/nccu-grouping-backend/docs/IPHONE_TESTFLIGHT.md\n"
+        "Give MAC_CODEX_HANDOFF.md to Codex on your Mac first.\n"
+        "On Mac: python3 import_mac_handoff.py --destination ~/projects (check only)\n"
+        "Then add --apply to import into new folders. No overwrite or push.\n"
+        "Continue with ~/projects/nccu-grouping-backend/docs/MAC_CODEX_HANDOFF.md\n"
         "Contains committed Git history only. Keep within your team. No credentials included.\n",
         encoding="utf-8",
     )
