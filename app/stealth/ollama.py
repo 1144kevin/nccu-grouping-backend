@@ -7,16 +7,16 @@ never forwards environment proxy credentials. Tests use an in-memory transport.
 import json
 import re
 import time
-from threading import BoundedSemaphore
 
 import httpx
 from pydantic import ValidationError
 
+from app.stealth.inference_queue import InferenceQueue
 from app.stealth.schemas import DraftContent, DraftOutput
 
 BASE_URL = "http://127.0.0.1:11434"
 MAX_RESPONSE_BYTES = 64 * 1024
-MODEL_SLOT = BoundedSemaphore(1)
+MODEL_SLOT = InferenceQueue()
 
 
 class LocalModelError(Exception):
@@ -73,7 +73,7 @@ class OllamaDraftProvider:
             raise LocalModelError("invalid_local_model_response") from exc
 
     def draft(self, text: str) -> DraftOutput:
-        if not MODEL_SLOT.acquire(blocking=False):
+        if not MODEL_SLOT.acquire():
             raise LocalModelError("local_model_busy")
         try:
             return self._draft(text)
@@ -110,7 +110,7 @@ class OllamaDraftProvider:
 
     def extract(self, messages: list[dict], schema: dict, prompt: str) -> str:
         """Bounded, stateless interview; shares the single local inference slot."""
-        if not MODEL_SLOT.acquire(blocking=False):
+        if not MODEL_SLOT.acquire():
             raise LocalModelError("local_model_busy")
         try:
             return self._chat(messages, schema, prompt, limit=90, tokens=1024, context=8192)

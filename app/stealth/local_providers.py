@@ -42,7 +42,7 @@ class OllamaEmbeddingProvider:
             for t in texts
         ):
             raise LocalModelError("invalid_embedding_input")
-        if not MODEL_SLOT.acquire(blocking=False):
+        if not MODEL_SLOT.acquire():
             raise LocalModelError("local_model_busy")
         try:
             with httpx.Client(

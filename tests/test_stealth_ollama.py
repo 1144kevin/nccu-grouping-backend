@@ -145,8 +145,10 @@ def test_timeout_is_sanitized():
     assert str(exc.value) == "local_model_timeout"
 
 
-def test_local_inference_is_bounded_to_one_concurrent_request():
+def test_local_inference_is_bounded_to_one_concurrent_request(monkeypatch):
     from app.stealth.ollama import MODEL_SLOT
+
+    monkeypatch.setattr(MODEL_SLOT, "wait_seconds", 0)
 
     assert MODEL_SLOT.acquire(blocking=False)
     try:
