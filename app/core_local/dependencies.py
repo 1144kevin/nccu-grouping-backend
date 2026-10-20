@@ -48,7 +48,13 @@ def require_local_mode(request: Request) -> None:
             raise HTTPException(403, "loopback_only")
     if any(
         key in request.headers
-        for key in ("forwarded", "x-forwarded-for", "x-real-ip", "x-forwarded-host")
+        for key in (
+            "forwarded",
+            "x-forwarded-for",
+            "x-real-ip",
+            "x-forwarded-host",
+            "x-forwarded-proto",
+        )
     ):
         raise HTTPException(403, "local_proxy_headers_not_allowed")
     origin = request.headers.get("origin")

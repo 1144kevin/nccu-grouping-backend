@@ -38,6 +38,7 @@ def test_invalid_device_host(host):
         ("https", "192.168.1.21", "192.168.1.10", [], False),
         ("https", "192.168.1.20", "evil.example", [], False),
         ("https", "192.168.1.20", "192.168.1.10", [(b"x-forwarded-for", b"127.0.0.1")], False),
+        ("https", "192.168.1.20", "192.168.1.10", [(b"x-forwarded-proto", b"https")], False),
     ],
 )
 def test_exact_device_transport_gate(monkeypatch, scheme, client, host, headers, allowed):
