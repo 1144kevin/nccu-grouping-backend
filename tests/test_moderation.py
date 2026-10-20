@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi import HTTPException
@@ -73,3 +73,25 @@ def test_appeals_keep_user_session_and_cannot_invent_reversal_actions():
             response="不可自動替別人重新同意",
             request_key=uuid4(),
         )
+
+
+def test_actual_app_opaque_retry_keys_are_accepted_and_stably_mapped_to_rpc_uuid():
+    calls = []
+    service = Moderation(
+        SimpleNamespace(token="synthetic", _request=lambda *a, **kw: calls.append(kw) or {})
+    )
+    value = ReviewInput(
+        expected_version=1,
+        action="review",
+        public_response="正在查核測試內容。",
+        request_key="post-1234567890-app-retry-key",
+    )
+    service.review(uuid4(), value)
+    service.review(uuid4(), value)
+    keys = [c["body"]["args"]["request_key"] for c in calls]
+    assert keys[0] == keys[1] and UUID(keys[0])
+    appeal = AppealInput(
+        detail="這是來自真實 App 格式的隔離申訴。", request_key="post-1234567890-appeal-retry-key"
+    )
+    service.appeals("create", appeal.model_dump(mode="json"))
+    assert UUID(calls[-1]["body"]["args"]["request_key"])
