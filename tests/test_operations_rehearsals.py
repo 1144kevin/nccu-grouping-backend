@@ -1,4 +1,5 @@
 import copy
+import json
 from uuid import uuid4
 
 import pytest
@@ -83,3 +84,46 @@ def test_remote_context_cannot_reach_image_build(tmp_path, monkeypatch):
 
 def test_container_smoke_payload_is_valid_python():
     compile(container.SMOKE, "linux-container-smoke", "exec")
+    compile(container.HTTP_PROBE, "linux-container-http-probe", "exec")
+
+
+@pytest.mark.parametrize("exit_code,oom", [(0, False), (137, False), (0, True)])
+def test_native_lifecycle_requires_health_and_graceful_exit(monkeypatch, exit_code, oom):
+    stopped = False
+
+    def execute(args, **kwargs):
+        nonlocal stopped
+        if "inspect" in args:
+            return json.dumps(
+                {
+                    "Running": not stopped,
+                    "Health": {"Status": "healthy"},
+                    "ExitCode": exit_code if stopped else 0,
+                    "OOMKilled": oom,
+                }
+            )
+        if "exec" in args:
+            return '{"health":200,"anonymous_posts":401}'
+        if "stop" in args:
+            stopped = True
+        return "synthetic-container"
+
+    monkeypatch.setattr(container, "execute", execute)
+    if exit_code or oom:
+        with pytest.raises(RuntimeError, match="SIGTERM"):
+            container.verify_lifecycle(["docker"], "image", "fixture")
+    else:
+        assert container.verify_lifecycle(["docker"], "image", "fixture")["sigterm_exit"] == 0
+
+
+def test_native_lifecycle_refuses_dead_service_before_probe(monkeypatch):
+    calls = []
+
+    def execute(args, **kwargs):
+        calls.append(args)
+        return json.dumps({"Running": False}) if "inspect" in args else "fixture"
+
+    monkeypatch.setattr(container, "execute", execute)
+    with pytest.raises(RuntimeError, match="startup"):
+        container.verify_lifecycle(["docker"], "image", "fixture")
+    assert not any("exec" in args for args in calls)

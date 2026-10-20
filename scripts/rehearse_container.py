@@ -8,14 +8,43 @@ import json
 import os
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[1]
 REPORT = ROOT / ".local" / "container-rehearsal.json"
+FAILURE_LOG = ROOT / ".local" / "container-command-failure.log"
+
+# Synthetic public configuration only; never inherit host credentials into containers.
+RUNTIME_ENV = {
+    "ENVIRONMENT": "cloud",
+    "CORE_CLOUD_ENABLED": "true",
+    "CORE_SUPABASE_ENABLED": "true",
+    "CLOUD_PUBLIC_API_URL": "https://api.team-domain.org/api/v1",
+    "CLOUD_PROXY_NETWORKS": '["127.0.0.1/32"]',
+    "BACKEND_CORS_ORIGINS": "[]",
+    "SUPABASE_URL": "https://axdwbfhrkbovgrbngrrh.supabase.co",
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_synthetic_rehearsal_key",
+}
+
+HTTP_PROBE = """
+import json,urllib.request,urllib.error
+headers={'Host':'api.team-domain.org','X-Forwarded-Proto':'https',
+ 'X-Forwarded-For':'198.51.100.8'}
+def status(path):
+ try:
+  return urllib.request.build_opener(urllib.request.ProxyHandler({})).open(
+   urllib.request.Request('http://127.0.0.1:8000'+path,headers=headers),timeout=3).status
+ except urllib.error.HTTPError as e:
+  return e.code
+assert status('/health')==200
+assert status('/api/v1/posts')==401
+print(json.dumps({'health':200,'anonymous_posts':401}))
+"""
 
 SMOKE = """
-import asyncio,json,os
+import asyncio,importlib,json,os,platform
 from pathlib import Path
 import httpx
 from app.core.config import Settings
@@ -24,6 +53,10 @@ from app.main import create_app
 assert os.getuid()==10001
 assert not any(Path('/srv/app').glob('.local'))
 assert not Path('/srv/app/.env').exists()
+native_modules=['asyncpg','PIL._imaging','cryptography.hazmat.bindings._rust',
+ 'pydantic_core._pydantic_core','uvloop','httptools']
+for name in native_modules:
+ importlib.import_module(name)
 s=Settings(_env_file=None,environment='cloud',core_cloud_enabled=True,
  core_supabase_enabled=True,cloud_public_api_url='https://api.team-domain.org/api/v1',
  cloud_proxy_networks=['127.0.0.1/32'],backend_cors_origins=[],
@@ -38,7 +71,9 @@ async def run():
   assert (await c.get('/health')).status_code==200
   assert (await c.get('/api/v1/posts')).status_code==401
 asyncio.run(run())
-print(json.dumps({'uid':os.getuid(),'health':200,'anonymous_posts':401,'network':'none'}))
+print(json.dumps({'uid':os.getuid(),'health':200,'anonymous_posts':401,'network':'none',
+ 'architecture':platform.machine(),'python':platform.python_version(),
+ 'native_modules':native_modules}))
 """
 
 
@@ -61,8 +96,67 @@ def execute(args, timeout=30):
     )
     if result.returncode:
         # Do not print a full environment, daemon context or registry credentials.
-        raise RuntimeError(f"Container command failed with status {result.returncode}")
+        FAILURE_LOG.parent.mkdir(parents=True, exist_ok=True)
+        FAILURE_LOG.write_text(result.stdout + "\n" + result.stderr, encoding="utf8")
+        raise RuntimeError(
+            f"Container command failed with status {result.returncode}; see ignored failure log"
+        )
     return result.stdout.strip()
+
+
+def runtime_flags(container):
+    return [
+        "--name",
+        container,
+        "--network",
+        "none",
+        "--read-only",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--pids-limit",
+        "128",
+        "--memory",
+        "512m",
+        "--cpus",
+        "1",
+        "--tmpfs",
+        "/tmp:rw,noexec,nosuid,size=32m",
+    ]
+
+
+def verify_lifecycle(docker, image, container):
+    environment = [item for k, v in RUNTIME_ENV.items() for item in ("--env", f"{k}={v}")]
+    execute(
+        docker
+        + ["run", "--detach"]
+        + runtime_flags(container)
+        + [
+            "--health-interval=1s",
+            "--health-start-period=1s",
+            "--health-timeout=3s",
+            "--health-retries=5",
+        ]
+        + environment
+        + [image]
+    )
+    deadline = time.monotonic() + 45
+    while True:
+        state = json.loads(execute(docker + ["inspect", "--format", "{{json .State}}", container]))
+        if not state["Running"] or state.get("Health", {}).get("Status") == "unhealthy":
+            raise RuntimeError("Native container startup/healthcheck failed")
+        if state.get("Health", {}).get("Status") == "healthy":
+            break
+        if time.monotonic() >= deadline:
+            raise RuntimeError("Native container healthcheck deadline exceeded")
+        time.sleep(1)
+    probe = json.loads(execute(docker + ["exec", container, "python", "-c", HTTP_PROBE]))
+    execute(docker + ["stop", "--time", "10", container], timeout=20)
+    state = json.loads(execute(docker + ["inspect", "--format", "{{json .State}}", container]))
+    if state["Running"] or state["ExitCode"] != 0 or state["OOMKilled"]:
+        raise RuntimeError("Container did not shut down cleanly on SIGTERM")
+    return {**probe, "docker_healthcheck": "healthy", "sigterm_exit": 0, "oom_killed": False}
 
 
 def run(build=False):
@@ -99,23 +193,9 @@ def run(build=False):
                         + [
                             "run",
                             "--rm",
-                            "--name",
-                            container,
-                            "--network",
-                            "none",
-                            "--read-only",
-                            "--cap-drop",
-                            "ALL",
-                            "--security-opt",
-                            "no-new-privileges",
-                            "--pids-limit",
-                            "128",
-                            "--memory",
-                            "512m",
-                            "--cpus",
-                            "1",
-                            "--tmpfs",
-                            "/tmp:rw,noexec,nosuid,size=32m",
+                        ]
+                        + runtime_flags(container)
+                        + [
                             "--entrypoint",
                             "python",
                             image,
@@ -124,7 +204,10 @@ def run(build=False):
                         ],
                         timeout=60,
                     )
-                    report.update(status="passed", built=True, smoke=json.loads(smoke))
+                    lifecycle = verify_lifecycle(docker, image, container)
+                    report.update(
+                        status="passed", built=True, smoke=json.loads(smoke), lifecycle=lifecycle
+                    )
                 finally:
                     # Only this unique rehearsal image/container, never prune or remove volumes.
                     subprocess.run(
