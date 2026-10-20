@@ -1,0 +1,34 @@
+{
+  "status": "passed",
+  "supabase_accessed": false,
+  "network": "none",
+  "postgres_image": "postgres@sha256:3645570cccdfa447589da9f57dd740faa29b30938e861289a5574b6ca6b03826",
+  "sha256": "479de56743da1ebda30d3a08a5d8f3371fd22a08a03b4a49ca9e842c957d5afe",
+  "archive_bytes": 52805,
+  "counts": {
+    "auth.users": 3,
+    "auth.sessions": 3,
+    "public.core_profiles": 3,
+    "public.core_posts": 25,
+    "public.core_join_requests": 2,
+    "public.core_chat_messages": 1,
+    "rehearsal_meta.events": 1
+  },
+  "migrations": [
+    "core_schema.sql",
+    "core_validation_hardening.sql",
+    "core_chat.sql",
+    "core_chat_variable_scope.sql"
+  ],
+  "missing_role_rolled_back": true,
+  "nonempty_restore_refused": true,
+  "corrupt_archive_refused": true,
+  "rows_and_catalog_equal": true,
+  "rls_rpc_verified": true,
+  "chat_rpc_verified": true,
+  "constraints_and_trigger_verified": true,
+  "source_removed_before_restore": true,
+  "containers_removed": true,
+  "checked_on": "2026-10-20",
+  "scope": "Synthetic checked-in core/chat baseline only; local auth compatibility shim; not full Supabase recovery"
+}
