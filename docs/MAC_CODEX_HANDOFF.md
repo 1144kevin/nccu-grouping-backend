@@ -317,6 +317,13 @@ App 已修正衝突刷新時草稿與錯誤遺失；新版需要重新勾選同�
 
 ## 8. 每次重新開發的最短指令
 
+回報查核已套用至同一 Supabase 開發專案。若需使用已授權的管理帳號，在 Mac
+建立 `.local/moderation.env`，內容為 `CORE_MODERATION_ENABLED=true`，重新啟動本機 API；
+登入 App 後由「幫助與回報 → 管理回報」進入。不要新增或猜測管理者；授權 30 天到期後
+需由專案擁有者明確續期。一般帳號不顯示入口，資料庫也會拒絕查核操作。
+操作與剩餘產品缺口見 `docs/CORE_SUPABASE_DEV.md` 的回報查核章節。
+競賽情境、重跑指令與效能限制見 `docs/COMPETITION_DEMO.md`。
+
 ### 選用：iPhone 使用 Mac 本機模型
 
 先完成前述 Ollama 模型、HTTPS 憑證信任、Mac 主機 IP 與最多八個精確裝置 IP 設定。
