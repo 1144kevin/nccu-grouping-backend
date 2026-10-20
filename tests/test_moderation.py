@@ -7,7 +7,7 @@ from pydantic import ValidationError
 
 from app.api.routes.moderation import moderator
 from app.core_cloud.engagement import ReportView
-from app.core_cloud.moderation import Moderation, ReviewInput
+from app.core_cloud.moderation import AppealInput, AppealReview, Moderation, ReviewInput
 
 
 def test_review_preserves_actor_session_and_version_contract():
@@ -57,4 +57,19 @@ def test_reporter_schema_rejects_internal_operator_notes():
             status="resolved",
             created_at="2026-10-20T06:00:00Z",
             internal_note="never public",
+        )
+
+
+def test_appeals_keep_user_session_and_cannot_invent_reversal_actions():
+    calls = []
+    store = SimpleNamespace(token="synthetic", _request=lambda *a, **kw: calls.append(kw) or {})
+    value = AppealInput(detail="重新檢視隔離測試案件的處置內容。", request_key=uuid4())
+    Moderation(store).appeals("create", value.model_dump(mode="json"))
+    assert calls[0]["token"] == "synthetic"
+    with pytest.raises(ValidationError):
+        AppealReview(
+            expected_version=1,
+            status="restore_group",
+            response="不可自動替別人重新同意",
+            request_key=uuid4(),
         )
