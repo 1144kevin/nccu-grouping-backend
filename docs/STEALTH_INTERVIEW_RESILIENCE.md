@@ -88,3 +88,32 @@ python scripts/smoke_stealth_resilience.py prepare
 安全截圖在忽略目錄 `.local/stealth-triple-ui/`：`interview-offline.jpg`、
 `interview-recovered.jpg`。後端訪談／資訊查核／成團相關 69 tests，App 訪談與成團
 2 suites／11 tests 通過；既有 Python 套件棄用提醒保留。測試憑證與建帳 SQL 已移除。
+
+## 2026-10-20 App 同時修改：發現與修正
+
+全新隔離三人配對，兩位成員分別登入 `localhost:8081` 與 `127.0.0.1:8081`，
+兩個來源隔離 Web 登入儲存。既有 Metro 只監聽 IPv6，因此測試使用臨時 IPv4 loopback
+靜態資源橋接到固定 IPv6 Metro；只供本機 GET 資源，不開放 LAN，不代理 Auth／資料庫 API。
+配對與意願由一般使用者 API 準備；兩份方案的輸入與送出均透過 App 畫面完成。
+
+兩個帳號從 revision 0 同時送出不同說明與 90／91 元。資料庫正確只保存一筆 revision 1，
+但失敗方畫面在更新後遺失自己的草稿及衝突原因。原因是父元件以 revision 當 React key，
+重新掛載清空了表單與 mutation error，而非資料庫互相覆蓋。
+
+App 修正：
+
+- 表單元件只依配對 ID 維持身分，草稿另外記錄開始編輯時的 revision。
+- 寫入使用草稿 revision；遠端版本改變仍保留原內容與錯誤，停用過時草稿送出。
+- 顯示版本變更提示及「捨棄我的草稿，載入最新方案」；本人明確載入後才能再編輯送出。
+- 開始新編輯時載入當前方案，取消編輯是明確捨棄操作；背景輪詢不默默覆蓋人工內容。
+- 同意勾選也綁定 revision，移除 React key 後仍不能將舊勾選帶入新版。
+
+修正後兩位成員從 revision 1 同時送出 92／93 元方案：唯讀 SQL 確認只產生 revision 2、
+92 元、formed_post_id 為 null。失敗方仍看到自己的 93 元與原公開說明、衝突原因，送出停用。
+本人按載入新版後可重新提出 revision 3。另一位原先勾選第二版，但第三版確認按鈕仍停用，
+必須重新勾選；沒有任何自動同意。之後用同一配對完成撤回驗收，見 App UI 驗收文件。
+
+新增 3 個元件回歸案例：衝突後保留草稿與錯誤、輪詢新版不得沿用勾選、背景改版保留人工
+輸入且重新編輯載入當前版本。完整 App 37 suites／139 tests、TypeScript、變更檔 ESLint 通過。
+既有其他元件的偶發 React act 提醒保留。相關成團後端 4 tests 通過，沒有修改後端 schema。
+忽略目錄證據：`.local/stealth-edge-ui/race-before-fix.jpg`、`race-conflict-retained.jpg`。
