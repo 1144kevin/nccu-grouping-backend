@@ -95,7 +95,9 @@ class ReportInput(StrictModel):
 
 class ReportView(ReportInput):
     id: UUID
-    status: Literal["received"]
+    status: Literal["received", "reviewing", "resolved", "dismissed"]
+    public_response: str = ""
+    review_version: int = 1
     created_at: AwareDatetime
 
 
@@ -133,6 +135,10 @@ class Engagement:
         )
 
     def reports(self):
+        if self.store.settings.core_moderation_enabled:
+            from app.core_cloud.moderation import Moderation
+
+            return ReportPage.model_validate(Moderation(self.store).rpc("mine"))
         return ReportPage.model_validate(self.rpc("reports"))
 
     def report(self, value: ReportInput, key: str):

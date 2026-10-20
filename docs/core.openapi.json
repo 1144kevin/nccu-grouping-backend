@@ -2207,6 +2207,110 @@
         }
       }
     },
+    "/api/v1/moderation/access": {
+      "get": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Access",
+        "operationId": "access_api_v1_moderation_access_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/moderation/reports": {
+      "get": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Reports",
+        "operationId": "reports_api_v1_moderation_reports_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/moderation/reports/{report_id}/review": {
+      "post": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Review",
+        "operationId": "review_api_v1_moderation_reports__report_id__review_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Report Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/search": {
       "get": {
         "tags": [
@@ -4908,6 +5012,16 @@
             "maxItems": 8,
             "minItems": 1,
             "title": "Turns"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IntakeFacts"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -6278,8 +6392,23 @@
           },
           "status": {
             "type": "string",
-            "const": "received",
+            "enum": [
+              "received",
+              "reviewing",
+              "resolved",
+              "dismissed"
+            ],
             "title": "Status"
+          },
+          "public_response": {
+            "type": "string",
+            "title": "Public Response",
+            "default": ""
+          },
+          "review_version": {
+            "type": "integer",
+            "title": "Review Version",
+            "default": 1
           },
           "created_at": {
             "type": "string",
@@ -6297,6 +6426,51 @@
           "created_at"
         ],
         "title": "ReportView"
+      },
+      "ReviewInput": {
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Version"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "review",
+              "resolve",
+              "dismiss",
+              "cancel_post"
+            ],
+            "title": "Action"
+          },
+          "public_response": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 5,
+            "title": "Public Response"
+          },
+          "internal_note": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Internal Note",
+            "default": ""
+          },
+          "request_key": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Request Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_version",
+          "action",
+          "public_response",
+          "request_key"
+        ],
+        "title": "ReviewInput"
       },
       "RoleSuggestion": {
         "properties": {

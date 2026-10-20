@@ -9,6 +9,7 @@ from app.api.routes import (
     development,
     engagement,
     join_requests,
+    moderation,
     notifications,
     posts,
     recommendations,
@@ -38,6 +39,7 @@ api_router.include_router(uploads.router)
 api_router.include_router(ai.router)
 api_router.include_router(recommendations.router)
 api_router.include_router(reports.router)
+api_router.include_router(moderation.router)
 api_router.include_router(search.router)
 api_router.include_router(stealth.router)
 api_router.include_router(stealth_cloud.router)

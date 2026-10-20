@@ -19,6 +19,7 @@ def build_core_contract() -> dict:
                 "/api/v1/auth/",
                 "/api/v1/account/",
                 "/api/v1/reports",
+                "/api/v1/moderation/",
                 "/api/v1/recommendations",
                 "/api/v1/search",
                 "/api/v1/uploads",

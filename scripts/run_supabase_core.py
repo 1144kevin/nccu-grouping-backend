@@ -23,6 +23,11 @@ def main() -> None:
         if config.get(name):
             os.environ[name] = config[name]
     local_ai = dotenv_values(ROOT / ".local" / "local-ai.env")
+    moderation = dotenv_values(ROOT / ".local" / "moderation.env")
+    enabled = moderation.get("CORE_MODERATION_ENABLED", "false").lower()
+    if enabled not in ("true", "false"):
+        raise ValueError("CORE_MODERATION_ENABLED must be true or false")
+    os.environ["CORE_MODERATION_ENABLED"] = enabled
     media = dotenv_values(ROOT / ".local" / "media-signing.env")
     for name in ("CORE_MEDIA_ENABLED", "CORE_MEDIA_SIGNING_KEY"):
         if media.get(name):

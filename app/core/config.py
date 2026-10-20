@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     core_device_test_host: str = ""
     core_device_test_clients: list[str] = []
     core_device_ai_enabled: bool = False
+    core_moderation_enabled: bool = False
     # Separate cloud runtime: TLS terminates at one explicitly trusted ingress hop.
     core_cloud_enabled: bool = False
     cloud_public_api_url: str = ""
