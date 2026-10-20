@@ -9,7 +9,13 @@ FROM python:3.13-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     PATH="/srv/app/.venv/bin:$PATH" CLOUD_BIND_HOST=0.0.0.0
 WORKDIR /srv/app
-RUN groupadd --gid 10001 app && useradd --uid 10001 --gid app --no-create-home app
+# Apply vendor security updates and omit the unused global installer and its vendored tools.
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* \
+    && python -m pip uninstall --yes pip \
+    && groupadd --gid 10001 app \
+    && useradd --uid 10001 --gid app --no-create-home app
 COPY --from=builder /srv/app/.venv ./.venv
 COPY --chown=10001:10001 app ./app
 COPY --chown=10001:10001 scripts/run_cloud_core.py ./scripts/run_cloud_core.py
