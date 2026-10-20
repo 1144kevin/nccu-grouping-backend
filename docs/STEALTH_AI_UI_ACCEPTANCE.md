@@ -114,3 +114,18 @@ Web 畫面。App `localhost:8081`、API `127.0.0.1:8000`、Ollama
 截圖保留於忽略目錄 `.local/stealth-triple-ui/`：`v1-two-consents.jpg`、
 `terms-offline.jpg`、`v2-reset-consents.jpg`、`formed-three-members.jpg`、
 `post-three-members.jpg`、`chat-first-member.jpg`、`chat-third-member.jpg`。
+
+## 2026-10-20 隔離 App 畫面補驗：成團前撤回
+
+另以全新三個隔離帳號，透過一般使用者 API 準備共同需求與配對，
+後續方案提交、修改、同意與撤回均由 App 畫面操作，沒有使用示範人物。
+兩個本機來源各登入一位帳號，避免跨分頁共用登入資料影響判斷。
+
+同一三人配對第三版只有一人確認，另一位成員在 App 按「撤回我的意願」。
+撤回者及已同意者重新整理後都顯示「這組機會已失效，不再接受意願」，
+該卡片的方案編輯、同意及意願按鈕全部消失。唯讀 SQL 確認一個 declined、
+僅一個第三版同意、formed_post_id 仍為 null，沒有產生正式拼單或聊天室。
+本情境未發現需修改的程式問題，不放寬既有全員確認規則。
+
+截圖位於忽略目錄 `.local/stealth-edge-ui/withdrawn-unavailable.jpg`。
+本節只驗證成團前撤回意願；成團後退出及撤回原需求仍依原有各自驗收紀錄。
