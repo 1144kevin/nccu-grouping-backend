@@ -1,0 +1,259 @@
+{
+  "baseline": {
+    "stage": "baseline",
+    "transport": "Windows loopback API -> live scoped Supabase Auth + RPC",
+    "seconds": 8.94,
+    "max_inflight": 2,
+    "target_rps": null,
+    "stopped": null,
+    "warmup": {
+      "/posts": {
+        "requests": 1,
+        "p50_ms": 523.26,
+        "p95_ms": 523.26,
+        "max_ms": 523.26,
+        "errors": 0
+      },
+      "/recommendations": {
+        "requests": 1,
+        "p50_ms": 586.93,
+        "p95_ms": 586.93,
+        "max_ms": 586.93,
+        "errors": 0
+      },
+      "/search": {
+        "requests": 1,
+        "p50_ms": 633.93,
+        "p95_ms": 633.93,
+        "max_ms": 633.93,
+        "errors": 0
+      }
+    },
+    "endpoints": {
+      "/posts": {
+        "requests": 10,
+        "p50_ms": 471.67,
+        "p95_ms": 1482.95,
+        "max_ms": 1482.95,
+        "errors": 0
+      },
+      "/recommendations": {
+        "requests": 10,
+        "p50_ms": 451.86,
+        "p95_ms": 929.24,
+        "max_ms": 929.24,
+        "errors": 0
+      },
+      "/search": {
+        "requests": 10,
+        "p50_ms": 477.28,
+        "p95_ms": 1478.78,
+        "max_ms": 1478.78,
+        "errors": 0
+      }
+    },
+    "includes_auth_network_rpc": true,
+    "models_called": false
+  },
+  "1000": {
+    "stage": "1000",
+    "transport": "Windows loopback API -> live scoped Supabase Auth + RPC",
+    "seconds": 7.64,
+    "max_inflight": 2,
+    "target_rps": null,
+    "stopped": null,
+    "warmup": {
+      "/posts": {
+        "requests": 1,
+        "p50_ms": 495.37,
+        "p95_ms": 495.37,
+        "max_ms": 495.37,
+        "errors": 0
+      },
+      "/recommendations": {
+        "requests": 1,
+        "p50_ms": 480.07,
+        "p95_ms": 480.07,
+        "max_ms": 480.07,
+        "errors": 0
+      },
+      "/search": {
+        "requests": 1,
+        "p50_ms": 457.25,
+        "p95_ms": 457.25,
+        "max_ms": 457.25,
+        "errors": 0
+      }
+    },
+    "endpoints": {
+      "/posts": {
+        "requests": 10,
+        "p50_ms": 479.17,
+        "p95_ms": 584.68,
+        "max_ms": 584.68,
+        "errors": 0
+      },
+      "/recommendations": {
+        "requests": 10,
+        "p50_ms": 510.75,
+        "p95_ms": 749.49,
+        "max_ms": 749.49,
+        "errors": 0
+      },
+      "/search": {
+        "requests": 10,
+        "p50_ms": 467.82,
+        "p95_ms": 502.58,
+        "max_ms": 502.58,
+        "errors": 0
+      }
+    },
+    "includes_auth_network_rpc": true,
+    "models_called": false
+  },
+  "5000": {
+    "stage": "5000",
+    "transport": "Windows loopback API -> live scoped Supabase Auth + RPC",
+    "seconds": 9.16,
+    "max_inflight": 2,
+    "target_rps": null,
+    "stopped": null,
+    "warmup": {
+      "/posts": {
+        "requests": 1,
+        "p50_ms": 487.14,
+        "p95_ms": 487.14,
+        "max_ms": 487.14,
+        "errors": 0
+      },
+      "/recommendations": {
+        "requests": 1,
+        "p50_ms": 682.83,
+        "p95_ms": 682.83,
+        "max_ms": 682.83,
+        "errors": 0
+      },
+      "/search": {
+        "requests": 1,
+        "p50_ms": 553.97,
+        "p95_ms": 553.97,
+        "max_ms": 553.97,
+        "errors": 0
+      }
+    },
+    "endpoints": {
+      "/posts": {
+        "requests": 10,
+        "p50_ms": 493.68,
+        "p95_ms": 789.03,
+        "max_ms": 789.03,
+        "errors": 0
+      },
+      "/recommendations": {
+        "requests": 10,
+        "p50_ms": 671.21,
+        "p95_ms": 829.16,
+        "max_ms": 829.16,
+        "errors": 0
+      },
+      "/search": {
+        "requests": 10,
+        "p50_ms": 531.48,
+        "p95_ms": 774.31,
+        "max_ms": 774.31,
+        "errors": 0
+      }
+    },
+    "includes_auth_network_rpc": true,
+    "models_called": false
+  },
+  "sustained": {
+    "stage": "sustained",
+    "transport": "Windows loopback API -> live scoped Supabase Auth + RPC",
+    "seconds": 119.55,
+    "max_inflight": 2,
+    "target_rps": 1,
+    "stopped": null,
+    "warmup": {
+      "/posts": {
+        "requests": 1,
+        "p50_ms": 491.88,
+        "p95_ms": 491.88,
+        "max_ms": 491.88,
+        "errors": 0
+      },
+      "/recommendations": {
+        "requests": 1,
+        "p50_ms": 644.73,
+        "p95_ms": 644.73,
+        "max_ms": 644.73,
+        "errors": 0
+      },
+      "/search": {
+        "requests": 1,
+        "p50_ms": 430.56,
+        "p95_ms": 430.56,
+        "max_ms": 430.56,
+        "errors": 0
+      }
+    },
+    "endpoints": {
+      "/posts": {
+        "requests": 40,
+        "p50_ms": 494.37,
+        "p95_ms": 706.77,
+        "max_ms": 1505.95,
+        "errors": 0
+      },
+      "/recommendations": {
+        "requests": 40,
+        "p50_ms": 656.77,
+        "p95_ms": 866.4,
+        "max_ms": 1283.59,
+        "errors": 0
+      },
+      "/search": {
+        "requests": 40,
+        "p50_ms": 488.44,
+        "p95_ms": 642.11,
+        "max_ms": 679.44,
+        "errors": 0
+      }
+    },
+    "includes_auth_network_rpc": true,
+    "models_called": false
+  },
+  "last-seat": {
+    "transport": "local API + actual Supabase concurrent transactions",
+    "attempts": 2,
+    "accepted": 1,
+    "rejected_full": 1,
+    "joined": 2,
+    "oversold": false
+  },
+  "container": {
+    "status": "blocked",
+    "built": false,
+    "deployed": false,
+    "pushed": false,
+    "reason": "Docker CLI/engine is not installed"
+  },
+  "backup": {
+    "format": "synthetic-application-graph-v1",
+    "profiles": 3,
+    "posts": 27,
+    "joins": 4,
+    "messages": 1,
+    "exact_rows": true,
+    "foreign_keys_verified": true,
+    "source_deleted_before_second_restore": true,
+    "target": "PostgreSQL session-local TEMP tables",
+    "full_supabase_disaster_recovery": false
+  },
+  "cleanup": {
+    "posts": 127,
+    "messages": 243,
+    "fixture_users": 0,
+    "fixture_posts": 0
+  }
+}

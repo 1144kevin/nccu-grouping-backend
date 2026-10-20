@@ -366,3 +366,15 @@ AI 請求最多 32 KiB，每來源 IP 每分鐘 12 次，整體每分鐘 240 次
 在開發資料庫，不能自行增加管理者。幫助與回報可進入「申訴與覆核」及「內測資料與使用說明」。
 政策使用假團隊／不可收信的 `.invalid` 信箱，不能對外當作正式政策；保留期限只是待實作目標。
 本輪 Windows 驗證為本機測試、模型回歸與雲端回滾交易，尚未完成手機端這些新入口的實機驗收。
+
+
+## 2026-10-20：效能、容器與備份演練接續
+
+先讀 `docs/OPERATIONS_REHEARSAL.md` 與 `docs/evidence/operations-20261020.json`。
+Windows 已完成實際 Supabase 5,000筆資料、兩分鐘120個請求、最後名額與合成資料 TEMP 還原；
+fixture 已清除，無須在 Mac 再清理。原有127筆拼單／243則訊息保留。
+Linux image 尚未建置：Windows 沒有可用 Docker／WSL。在 Mac 已有本機 Linux Docker engine 時，
+先 `python -m scripts.rehearse_container`，再 `python -m scripts.rehearse_container --build`。
+只建置本機測試 image，不 push 或部署。整個 Supabase／Auth／Storage 災難復原仍未驗收。
+合成備份在 Windows ignored `.local/backups/synthetic-graph.json`，不在 Git bundle；若要重跑相同
+還原，可另外只搬這個合成檔，使用 rehearse_backup 產生 TEMP／ROLLBACK SQL，不搬帳密檔。
