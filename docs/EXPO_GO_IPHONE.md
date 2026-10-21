@@ -37,6 +37,8 @@ npm run expo-go:check
 npm run dev:expo-go
 ```
 
+針對「Safari 可連但 Expo Go 拒絕憑證」的對照，可先停止本工具的 Expo 服務，再執行 `npm run preview:expo-go`。它只把 JavaScript 改成 `--no-dev --minify`，測試開發偵錯層是否相關；API、精確裝置限制、憑證及 TLS 驗證不變，不是部署或商店build。首次載入需重新掃碼取得新manifest。一般開發仍使用 `dev:expo-go`。
+
 不要用 `npm run dev:supabase` 掃手機：那個指令是 localhost Web 版。不要改 API 為手機的 localhost，也不要使用 tunnel。新指令不寫入／覆蓋原生 Apple profile，清掉殘留 trial、Expo public env 與 dotenv 污染，維持 Supabase 與 HTTPS。
 
 ## 防火牆與服務範圍
@@ -73,7 +75,7 @@ add 不覆寫既有同名規則；移除不要求憑證仍有效。API規則的�
 
 完整從多工畫面關閉 Expo Go，再掃 App QR，確保重新建立連線並載入最新 JS。「檢查目前測試連線」會顯示實際 API，先用不帶帳密／Cookie、不讀 SecureStore 的原生 XHR 檢查 `/health`（最多10秒），再檢查原有 API client 的 readiness。前者200、後者失敗時畫面會明確區分；HTTP403表示後端已收到但拒絕來源，`ERR_NETWORK`只代表尚無HTTP回應，不能單憑代碼判定是憑證。原生請求失敗時，另顯示僅來自無帳密 health 請求、最多300字的系統連線錯誤；不顯示任意HTTP回應本文。回報診斷代碼與「手機系統回報」即可，不需提供帳密或Token。檢查不刪登入資料、不修改TLS信任、不建立帳號。
 
-2026-10-22 實機進度：本人已確認 iPhone Safari 的 HTTPS health 無警告且正常回 JSON。Expo Go 原生 XHR 明確回報「The certificate for this server is invalid」，不是登入／資料庫錯誤；本人確認已安裝 CA 序號與 Windows 相同、日期正確。服務補上同一個 CA 的完整鏈後，實際 TLS1.3 送出2張憑證並通過 Windows 驗證，手機仍回報相同錯誤。具體根因尚未確認，接續排除 iOS 系統信任快取／Expo Go 相容性；不能標示 Expo Go 已連通或全流程通過。沒有改成 HTTP API、忽略憑證驗證或放寬來源名單。
+2026-10-22 實機進度：本人已確認 iPhone Safari 的 HTTPS health 無警告且正常回 JSON。Expo Go 原生 XHR 明確回報「The certificate for this server is invalid」，不是登入／資料庫錯誤；本人確認已安裝 CA 序號與 Windows 相同、日期正確。服務補上同一個 CA 的完整鏈後，實際 TLS1.3 送出2張憑證並通過 Windows 驗證，手機仍回報相同錯誤。iPhone重新開機及非開發JS對照也均未解決，已恢復一般開發模式。具體根因尚未確認；不能標示 Expo Go 已連通或全流程通過。沒有改成 HTTP API、忽略憑證驗證或放寬來源名單。接續使用 [Mac TLS診斷](MAC_EXPO_GO_TLS_DIAGNOSTIC.md) 取得Apple原生驗證原因；Windows已提供只含公開憑證的離線診斷ZIP，Swift尚未在Mac執行。
 
 **Apple AI 保留在原生版**。Expo Go 自動使用 Windows 本機訪談與語義模型；Google 按鈕不顯示。Apple／Google原生回跳、HEIC與背景切換、推播／語音等仍以各功能原來限制為準。不能把電腦自動測試、manifest與iOS bundle產生成功當成手機實際驗收；記錄本人實測結果再標完成。
 

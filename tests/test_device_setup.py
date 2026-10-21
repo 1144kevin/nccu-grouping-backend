@@ -4,6 +4,7 @@ import ssl
 import threading
 import time
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from cryptography import x509
@@ -134,6 +135,26 @@ def test_public_mac_export_contains_no_private_material(prepared):
         (tls / "ca.pem").read_bytes()
     ).public_bytes(serialization.Encoding.DER)
     assert "publishable" not in json.dumps(public) and "key" not in json.dumps(public)
+
+
+def test_offline_apple_probe_exports_only_public_material(prepared):
+    import zipfile
+
+    from scripts.export_apple_tls_probe import export
+
+    root, _ = prepared
+    archive = export(root)
+    with zipfile.ZipFile(archive) as bundle:
+        assert {Path(name).name for name in bundle.namelist()} == {
+            "ca.cer",
+            "server.cer",
+            "tls-facts.json",
+            "check_apple_device_tls.swift",
+            "README.md",
+        }
+        assert all(b"PRIVATE KEY" not in bundle.read(name) for name in bundle.namelist())
+        for name in ("ca.cer", "server.cer"):
+            x509.load_der_x509_certificate(bundle.read("apple-tls-diagnostic/" + name))
 
 
 @pytest.mark.parametrize(
