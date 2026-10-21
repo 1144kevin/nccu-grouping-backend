@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 
 from app.core.config import get_settings
+from app.core_cloud.email_confirmation import confirmation_page
 from app.core_cloud.google import GoogleFinishInput, GoogleStartInput, GoogleStartView, google_flows
 from app.core_cloud.store import SupabaseCoreStore
 from app.core_local.dependencies import (
@@ -8,6 +9,7 @@ from app.core_local.dependencies import (
     TokenDep,
     UserDep,
     auth_rate_limit,
+    require_local_mode,
 )
 from app.core_local.schemas import (
     AppPasswordInput,
@@ -21,6 +23,11 @@ from app.core_local.schemas import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.get("/email-confirmed", include_in_schema=False, dependencies=[Depends(require_local_mode)])
+def email_confirmed():
+    return confirmation_page()
 
 
 @router.post("/password", status_code=204, dependencies=[Depends(auth_rate_limit)])

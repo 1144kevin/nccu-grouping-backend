@@ -45,8 +45,18 @@ def main() -> None:
     os.environ["CORE_LOCAL_ENABLED"] = "false"
     os.environ["CORE_SUPABASE_ENABLED"] = "true"
     os.environ["API_V1_PREFIX"] = "/api/v1"
-    os.environ["BACKEND_CORS_ORIGINS"] = '["http://localhost:8081","http://127.0.0.1:8081"]'
+    os.environ["BACKEND_CORS_ORIGINS"] = (
+        '["http://localhost:8081","http://127.0.0.1:8081"]'
+    )
     os.environ["DEBUG"] = "false"
+    # Share the current device landing page with desktop registrations too.
+    device = dotenv_values(ROOT / ".local" / "device-test.env")
+    from app.core.device_test import private_ipv4
+
+    host = device.get("DEVICE_HOST", "")
+    os.environ["CORE_EMAIL_REDIRECT_URL"] = (
+        f"https://{host}:8443/api/v1/auth/email-confirmed" if private_ipv4(host) else ""
+    )
     os.environ["CORE_DEVICE_TEST_ENABLED"] = "false"
     os.environ["CORE_CLOUD_ENABLED"] = "false"
     from app.core.config import get_settings

@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     core_supabase_enabled: bool = False
     # Enable only after adding the exact native callback to the development Auth allowlist.
     core_google_ios_enabled: bool = False
+    core_email_redirect_url: str = ""
     core_media_enabled: bool = False
     core_media_signing_key: SecretStr = SecretStr("")
     # Explicit opt-in for direct TLS on a private LAN; never enabled by the local runner.

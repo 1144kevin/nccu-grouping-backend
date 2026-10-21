@@ -124,6 +124,21 @@ def test_app_password_update_only_sends_password_and_verified_user_token(cloud):
     assert "Dedicated-app-password" not in repr(value)
 
 
+def test_device_signup_has_fixed_https_email_redirect_not_client_supplied(cloud):
+    from urllib.parse import parse_qs
+
+    store, requests, responses = cloud
+    store.settings.core_device_test_enabled = True
+    store.settings.core_device_test_host = "192.168.1.10"
+    responses.append((200, {"id": "pending"}))
+    store.register(
+        RegisterInput(
+            email="synthetic@example.test", password="Dedicated-test-password", display_name="測試"
+        )
+    )
+    assert parse_qs(requests[0].url.query.decode()) == {
+        "redirect_to": ["https://192.168.1.10:8443/api/v1/auth/email-confirmed"]
+    }
 
 
 @pytest.mark.parametrize(

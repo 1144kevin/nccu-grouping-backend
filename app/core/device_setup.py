@@ -221,6 +221,7 @@ def device_environment(root: Path):
         ENVIRONMENT="local",
         CORE_DEVICE_TEST_ENABLED="true",
         CORE_DEVICE_TEST_HOST=host,
+        CORE_EMAIL_REDIRECT_URL=f"https://{host}:8443/api/v1/auth/email-confirmed",
         CORE_DEVICE_TEST_CLIENTS=json.dumps(clients),
         CORE_SUPABASE_ENABLED="true",
         CORE_GOOGLE_IOS_ENABLED=confirmed,

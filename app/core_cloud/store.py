@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from urllib.parse import urlencode
 from uuid import UUID
 
 import httpx
@@ -158,9 +159,12 @@ class SupabaseCoreStore:
         )
 
     def register(self, value: RegisterInput) -> SessionView | ConfirmationView:
+        from app.core_cloud.email_confirmation import email_redirect
+
+        redirect = email_redirect(self.settings)
         data = self._request(
             "POST",
-            "/auth/v1/signup",
+            "/auth/v1/signup" + ("?" + urlencode({"redirect_to": redirect}) if redirect else ""),
             body={
                 "email": value.email,
                 "password": value.password.get_secret_value(),
