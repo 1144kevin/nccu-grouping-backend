@@ -45,8 +45,10 @@ def export():
     manifest.write_text(json.dumps(records, indent=2) + "\n", encoding="utf-8")
     shutil.copyfile(ROOT / "scripts/import_mac_handoff.py", destination / "import_mac_handoff.py")
     shutil.copyfile(ROOT / "docs/MAC_CODEX_HANDOFF.md", destination / "MAC_CODEX_HANDOFF.md")
+    shutil.copyfile(ROOT / "docs/MAC_CONNECT_WINDOWS.md", destination / "MAC_CONNECT_WINDOWS.md")
     (destination / "START_HERE.txt").write_text(
-        "Give MAC_CODEX_HANDOFF.md to Codex on your Mac first.\n"
+        "For normal iPhone App + Windows backend, give MAC_CONNECT_WINDOWS.md to Mac Codex first.\n"
+        "Transfer the separate public iphone-windows-link.zip too; it contains no private keys.\n"
         "On Mac: python3 import_mac_handoff.py --destination ~/projects (check only)\n"
         "Then add --apply to import into new folders. No overwrite or push.\n"
         "Continue with ~/projects/nccu-grouping-backend/docs/MAC_CODEX_HANDOFF.md\n"
@@ -80,17 +82,21 @@ def check():
             else None
         )
         if not result or result.returncode:
-            missing.append("Full Xcode 26.4+ selected and first launch completed")
+            missing.append("Full Xcode 27+ selected and first launch completed (Apple intake SDK)")
         else:
             print(result.stdout.strip())
             parsed = re.search(r"Xcode (\d+)\.(\d+)", result.stdout)
-            if not parsed or tuple(map(int, parsed.groups())) < (26, 4):
-                missing.append("Xcode 26.4+")
+            if not parsed or tuple(map(int, parsed.groups())) < (27, 0):
+                missing.append("Xcode 27+ (Apple intake SDK)")
     else:
         print("Windows: native compilation/signing must be checked on Mac.")
     print(
         "Missing: "
-        + (", ".join(missing) if missing else "none detected; verify Node >=22.13 and Xcode >=26.4")
+        + (
+            ", ".join(missing)
+            if missing
+            else "none detected; use Node24 and Xcode27+ for Apple intake"
+        )
     )
     print(
         "No installation, credential reads, deployment, login or network configuration performed."

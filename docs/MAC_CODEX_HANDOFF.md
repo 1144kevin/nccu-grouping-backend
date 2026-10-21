@@ -1,5 +1,10 @@
 # 給 Mac 上 Codex：從 Windows 接手、啟動到 iPhone 驗收
 
+**2026-10-22正常裝置版接線：優先讀 [MAC_CONNECT_WINDOWS.md](MAC_CONNECT_WINDOWS.md)。**
+Windows已準備私人HTTPS、精確手機防火牆名單及Google原生回跳；Mac只重建正常App，
+不啟動Mac後端、不安裝Ollama／Docker。公開CA／連線JSON須另外搬，Git bundle不含私有設定。
+新指令會強制trial=false；完整登入／拼單／聊天／偷揪仍須在這個新build實機驗收。
+
 更新：2026-10-20。這是一份可直接交給 Mac 上 Codex 閱讀及依序操作的交接指令。
 
 **2026-10-21方向更新：**本人已指定改走iPhone Apple原生裝置端AI，不在Mac安裝Ollama。

@@ -1,12 +1,16 @@
 # 開發交付與 iPhone 驗收表
 
-最新更新（2026-10-20）：本輪完成跨輪訪談更正保護、12組新合成案例回歸、私人申訴與
+最新更新（2026-10-22）：Windows 私人 HTTPS、精確裝置防火牆、公開 CA 交接及正常 iPhone profile 已完成；Supabase 已保存精確原生 Google 回跳，既有 Web 設定保留。後端524項、App189項及9項連線／profile契約檢查通過。Apple 訪談模組已由 Mac 建置過，但正常 App 連 Windows 的手機完整驗收尚未執行；APNs、TestFlight 仍未完成。先依 [正常 iPhone 接 Windows](MAC_CONNECT_WINDOWS.md) 操作，本段優先於下方歷史紀錄；不要沿用舊的試用版或本機啟動順序。
+
+以下為2026-10-20驗收基線及待辦，涉及實機的狀態以上述更新與新交接文件為準。
+
+歷史更新（2026-10-20）：本輪完成跨輪訪談更正保護、12組新合成案例回歸、私人申訴與
 訊息隱藏（聊天／預覽／搜尋一致），並以 pgvector 發現既有最新20筆候選池以外的新配對。
 免費本機模型產生向量，只有本人有效需求可索引，其他人原文不會公開；全員同版確認仍保留。
 政策與聯絡資料目前是明確標示的內測假資料／草案，沒有啟用一般定時清理或承諾備份清除期限。
 完整回歸後端485項、App 144項通過；TypeScript、Ruff／選定 ESLint 檢查通過。
 詳見 [本輪實作與驗證](SEMANTIC_DISCOVERY_AND_APPEALS.md) 及 [政策草案](PRIVACY_AND_TERMS_DRAFT.md)。
-沒有部署或產出 TestFlight build；Apple 原生模型與 Mac／iPhone 實機驗收仍未完成。
+當時沒有部署或產出 TestFlight build；當時 Apple 原生模型與 Mac／iPhone 實機驗收仍未完成。
 
 本輪環境：Windows localhost + Supabase 開發專案 `axdwbfhrkbovgrbngrrh`；後端 `main`、前端 `kevin_dev`。沒有部署、EAS 建置、推送 Git、消耗 OpenAI 額度或代替真人確認拼單。
 
@@ -25,15 +29,15 @@
 | 偷揪分身／需求／配對／全員確認成團 | 已串接；改版清空同意、同版全員同意才建單與聊天室 | 配對規模、跨日、更多分類與地點、長時間運作測試 |
 | 自然語言補問 | 真正免費本機 Qwen3.5 4B，原句依據可檢查，明確套用後才可儲存；另12組反例修正後全通過 | 標準合成20例19例通過；分類／行程仍可能漏，不能當成完整語義準確率 |
 | 費用／分工草案 | 免費規則規劃器；使用已知費用與本人志願，不猜價格 | 目前不是 LLM 代理協商；仍須每人親自確認 |
-| iPhone Google 登入 | 原生 PKCE／固定回跳程式完成，預設停用 | Supabase 精確 allowlist、Mac 原生 build、實機登入 |
+| iPhone Google 登入 | 原生 PKCE／固定回跳完成；2026-10-22已加精確allowlist，裝置profile啟用 | Mac 正常原生 build、實機登入 |
 | Apple 登入或同等隱私登入選項 | 尚未實作 | 發行前依 Login Services 規範檢查適用性；一般信箱登入不自動代表滿足隱藏信箱選項 |
-| iOS 打包 | Windows 離線 JS／資源 export 成功 | Xcode 編譯、簽章、安裝與實機測試尚未執行 |
+| iOS 打包 | Windows export 與 Mac Apple訪談試用build已完成 | 重建正常連線版，登入至成團全流程實機驗收 |
 | TestFlight | release 檢查與接續文件已備妥 | 可達 API、Apple Team／App 記錄／簽章、驗收及上傳；目前無 TestFlight build |
 | 帳號刪除 | App 內預覽、近期登入、手動 DELETE、可續作圖片清理、實際 Auth／關聯資料刪除已驗證 | Mac／iPhone 驗收，正式備份保留與支援流程 |
 | 完整隱私／使用條款、內容治理 | 尚未完成 | 政策草案、管理者處理與私人申訴已補；仍缺正式保留作業、營運資料與有效公開聯絡資訊 |
-| Apple 裝置模型、APNs、付款 | 未實作 | 各自獨立規劃；不得宣稱已支援 |
+| Apple 裝置模型、APNs、付款 | Apple訪談模組已具備；APNs、付款未實作 | Apple訪談仍需正常連線版驗收；640維向量尚未整合 |
 
-## Mac／iPhone 驗收順序
+## 歷史 Mac／iPhone 驗收順序（正常連線改依新交接文件）
 
 詳細設定見 [iPhone 與 TestFlight](IPHONE_TESTFLIGHT.md)。下面只列驗收，並非已執行結果。
 

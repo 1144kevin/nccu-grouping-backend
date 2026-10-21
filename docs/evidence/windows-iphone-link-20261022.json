@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-22",
+  "scope": "Local Windows API and existing Supabase development project; normal native iPhone handoff",
+  "google_redirect": {
+    "added": "nccugrouping://auth/callback",
+    "verified_in_dashboard": true,
+    "existing_web_redirect_and_site_url_preserved": true,
+    "real_native_google_login_verified": false
+  },
+  "connection": {
+    "network": "User-confirmed personal iPhone hotspot; selected Windows interface Private",
+    "firewall": "Private profile; one exact local IPv4, one exact iPhone IPv4, TCP8443 only",
+    "tls": "Dedicated short-lived development CA and 7-day IP-SAN server certificate",
+    "ca_private_key_persisted": false,
+    "server_private_key_exported": false,
+    "system_certificate_trust_installed_by_agent": false,
+    "windows_verified_tls_probe": "TLS valid; HTTP403 expected because Windows source is not the allowlisted iPhone",
+    "phone_health_and_end_to_end_verified": false
+  },
+  "models": {
+    "existing_local_models_only": true,
+    "listen": "127.0.0.1:11434",
+    "cloud_disabled": true,
+    "parallel_inference": 1,
+    "ollama_queue_limit": 2,
+    "phone_apple_interview": "Existing native module retained; requires normal Mac device rebuild"
+  },
+  "validation": {
+    "backend_tests_passed": 524,
+    "app_tests_passed": 189,
+    "profile_and_public_connection_contract_tests_passed": 9,
+    "native_permission_profiles_checked": 3,
+    "typescript": "passed",
+    "selected_ruff_and_eslint": "passed",
+    "windows_native_build_guard": "correctly refused native device preparation on Windows"
+  },
+  "remaining": [
+    "Owner installs and trusts the public development CA on the test iPhone",
+    "Mac integrates current committed source and rebuilds the normal device App",
+    "Real iPhone HTTPS, Google callback, accounts, posts, chat and all-party confirmation acceptance"
+  ],
+  "deployment_performed": false,
+  "paid_services_used": false,
+  "git_push_performed": false
+}
