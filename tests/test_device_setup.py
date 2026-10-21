@@ -13,6 +13,41 @@ from app.core.device_setup import check_tls, device_addresses, issue_tls, load_d
 from scripts.device_link import export_public, network_problem
 
 
+def test_expo_connection_exports_only_network_metadata_and_firewall_stays_exact(
+    prepared, monkeypatch
+):
+    from scripts import device_link
+
+    root, _ = prepared
+    monkeypatch.setattr(device_link.sys, "platform", "win32")
+    monkeypatch.setattr(
+        device_link,
+        "windows_networks",
+        lambda: [
+            {"host": "192.168.1.10", "category": "Private"},
+        ],
+    )
+    value = device_link.expo_config(root)
+    assert set(value) == {"host", "clients", "api", "leaf_expires"}
+    assert value["clients"] == ["192.168.1.20"]
+    command = device_link.firewall_command(root, "add", expo=True)
+    assert "-LocalPort 8081 -LocalAddress '192.168.1.10'" in command
+    assert "-RemoteAddress @('192.168.1.20') -Profile Private" in command
+    assert "NCCUGrouping-PrivateDevice-8081" in command
+    assert "-LocalPort 8443" in device_link.firewall_command(root, "add")
+    monkeypatch.setattr(
+        device_link,
+        "windows_networks",
+        lambda: [
+            {"host": "192.168.1.10", "category": "Public"},
+        ],
+    )
+    with pytest.raises(ValueError, match="Private"):
+        device_link.expo_config(root)
+    with pytest.raises(ValueError, match="Private"):
+        device_link.firewall_command(root, "add", expo=True)
+
+
 @pytest.fixture
 def prepared(tmp_path):
     local = tmp_path / ".local"

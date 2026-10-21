@@ -131,15 +131,31 @@ def probe(root):
     }
 
 
-def firewall_command(root, action):
+def expo_config(root):
+    settings, _, tls = load_device(root)
+    if sys.platform == "win32":
+        problem = network_problem(settings.core_device_test_host, windows_networks())
+        if problem:
+            raise ValueError(problem)
+    return {
+        "host": settings.core_device_test_host,
+        "clients": settings.core_device_test_clients,
+        "api": f"https://{settings.core_device_test_host}:8443/api/v1",
+        "leaf_expires": tls["leaf_expires"],
+    }
+
+
+def firewall_command(root, action, *, expo=False):
     if sys.platform != "win32":
         raise ValueError("Firewall helper is Windows-only")
-    name = "NCCUGrouping-PrivateDevice-8443"
+    port = 8081 if expo else 8443
+    name = f"NCCUGrouping-PrivateDevice-{port}"
     prefix = "$ErrorActionPreference='Stop'; "
     if action == "check":
         return (
-            prefix + f"Get-NetFirewallRule -Name '{name}' -ErrorAction SilentlyContinue | "
-            "Select-Object Name,Enabled,Profile,Direction,Action | ConvertTo-Json"
+            prefix + f"$rule=Get-NetFirewallRule -Name '{name}' -ErrorAction SilentlyContinue; "
+            "if ($rule) { $rule | Select-Object Name,Enabled,Profile,Direction,Action | "
+            "ConvertTo-Json } else { '{\"status\":\"not_configured\"}' }; exit 0"
         )
     if action == "remove":
         return prefix + f"Remove-NetFirewallRule -Name '{name}'"
@@ -154,8 +170,8 @@ def firewall_command(root, action):
     return (
         prefix + f"if (Get-NetFirewallRule -Name '{name}' -ErrorAction SilentlyContinue) "
         "{ throw 'Existing named rule preserved; remove it explicitly before replacing' }; "
-        f"New-NetFirewallRule -Name '{name}' -DisplayName 'NCCU private iPhone test' "
-        f"-Direction Inbound -Action Allow -Protocol TCP -LocalPort 8443 -LocalAddress '{host}' "
+        f"New-NetFirewallRule -Name '{name}' -DisplayName 'NCCU private iPhone test {port}' "
+        f"-Direction Inbound -Action Allow -Protocol TCP -LocalPort {port} -LocalAddress '{host}' "
         f"-RemoteAddress @({remote}) -Profile Private -EdgeTraversalPolicy Block | Out-Null"
     )
 
@@ -174,6 +190,10 @@ def main():
             "firewall-add",
             "firewall-remove",
             "probe",
+            "expo-config",
+            "expo-firewall-check",
+            "expo-firewall-add",
+            "expo-firewall-remove",
         ),
     )
     parser.add_argument("--host")
@@ -192,6 +212,8 @@ def main():
         result = export_public(ROOT)
     elif args.action == "probe":
         result = probe(ROOT)
+    elif args.action == "expo-config":
+        result = expo_config(ROOT)
     elif args.action == "confirm-google":
         # Explicit human acknowledgement; never claims Management API verification.
         path = ROOT / ".local/device-test.env"
@@ -211,10 +233,11 @@ def main():
             content += "\nDEVICE_GOOGLE_IOS_CONFIRMED=true\n"
         path.write_text(content, encoding="utf8")
         result = {"google_ios": "user_confirmed_exact_allowlist", "real_login": "not_verified"}
-    elif args.action.startswith("firewall-"):
-        action = args.action.removeprefix("firewall-")
+    elif "firewall-" in args.action:
+        expo = args.action.startswith("expo-")
+        action = args.action.split("firewall-", 1)[1]
         # Mutations require a normal Windows elevated terminal; no UAC bypass or policy change.
-        script = firewall_command(ROOT, action)
+        script = firewall_command(ROOT, action, expo=expo)
         r = subprocess.run(
             ["powershell.exe", "-NoProfile", "-Command", script],
             capture_output=True,
@@ -228,7 +251,7 @@ def main():
             )
         result = {
             "firewall_action": action,
-            "scope": "Private network, exact host/clients, TCP8443",
+            "scope": f"Private network, exact host/clients, TCP{8081 if expo else 8443}",
             "detail": r.stdout.strip(),
         }
     else:
