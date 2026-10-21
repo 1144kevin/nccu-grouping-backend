@@ -46,6 +46,17 @@ class RegisterInput(LoginInput):
         return value.strip() if isinstance(value, str) else value
 
 
+class AppPasswordInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+    password: SecretStr
+    expected_user_id: UUID
+
+    @field_validator("password")
+    @classmethod
+    def valid_password(cls, value: SecretStr) -> SecretStr:
+        return LoginInput.password_length(value)
+
+
 class ProfileView(BaseModel):
     deletion_pending: bool = False
     id: UUID

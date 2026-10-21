@@ -8,7 +8,13 @@ from fastapi import HTTPException
 
 from app.core.config import Settings
 from app.core_cloud.store import PROJECT_URL, SupabaseCoreStore
-from app.core_local.schemas import ConfirmationView, LoginInput, RefreshInput, RegisterInput
+from app.core_local.schemas import (
+    AppPasswordInput,
+    ConfirmationView,
+    LoginInput,
+    RefreshInput,
+    RegisterInput,
+)
 
 
 @pytest.fixture
@@ -104,6 +110,20 @@ def test_signup_pending_confirmation_does_not_invent_a_session(cloud):
     )
     assert isinstance(result, ConfirmationView)
     assert len(requests) == 1 and "authorization" not in requests[0].headers
+
+
+def test_app_password_update_only_sends_password_and_verified_user_token(cloud):
+    store, requests, responses = cloud
+    responses.append((200, {"id": "same-account"}))
+    value = AppPasswordInput(password="  Dedicated-app-password  ", expected_user_id=uuid4())
+    store.set_app_password("verified-user-token", value)
+    assert requests[0].method == "PUT"
+    assert requests[0].url.path == "/auth/v1/user"
+    assert requests[0].headers["authorization"] == "Bearer verified-user-token"
+    assert json.loads(requests[0].content) == {"password": "  Dedicated-app-password  "}
+    assert "Dedicated-app-password" not in repr(value)
+
+
 
 
 @pytest.mark.parametrize(

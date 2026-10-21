@@ -3,8 +3,14 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from app.core.config import get_settings
 from app.core_cloud.google import GoogleFinishInput, GoogleStartInput, GoogleStartView, google_flows
 from app.core_cloud.store import SupabaseCoreStore
-from app.core_local.dependencies import StoreDep, TokenDep, UserDep, auth_rate_limit
+from app.core_local.dependencies import (
+    StoreDep,
+    TokenDep,
+    UserDep,
+    auth_rate_limit,
+)
 from app.core_local.schemas import (
+    AppPasswordInput,
     ConfirmationView,
     LoginInput,
     ProfileInput,
@@ -15,6 +21,18 @@ from app.core_local.schemas import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/password", status_code=204, dependencies=[Depends(auth_rate_limit)])
+def set_app_password(value: AppPasswordInput, store: StoreDep, token: TokenDep, user: UserDep):
+    if not isinstance(store, SupabaseCoreStore):
+        raise HTTPException(503, "password_requires_supabase")
+    if not user.email_verified or user.deletion_pending:
+        raise HTTPException(403, "app_password_not_available")
+    if value.expected_user_id != user.id:
+        raise HTTPException(409, "app_password_account_changed")
+    store.set_app_password(token, value)
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
 
 
 @router.post("/refresh", response_model=SessionView, dependencies=[Depends(auth_rate_limit)])

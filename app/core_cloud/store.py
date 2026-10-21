@@ -7,6 +7,7 @@ from fastapi import HTTPException
 
 from app.core.config import Settings
 from app.core_local.schemas import (
+    AppPasswordInput,
     ChatActivity,
     ChatPage,
     ChatReadView,
@@ -79,6 +80,10 @@ class SupabaseCoreStore:
                 "over_email_send_rate_limit",
                 "email_address_not_authorized",
                 "email_address_invalid",
+                "weak_password",
+                "same_password",
+                "reauthentication_needed",
+                "reauthentication_not_valid",
             ):
                 detail = {
                     "invalid_credentials": "invalid_email_or_password",
@@ -87,6 +92,10 @@ class SupabaseCoreStore:
                     "over_email_send_rate_limit": "email_send_rate_limit",
                     "email_address_not_authorized": "email_provider_not_configured",
                     "email_address_invalid": "email_address_invalid",
+                    "weak_password": "app_password_weak",
+                    "same_password": "app_password_unchanged",
+                    "reauthentication_needed": "app_password_reauthenticate",
+                    "reauthentication_not_valid": "app_password_reauthenticate",
                 }[code]
                 raise HTTPException(
                     401
@@ -161,6 +170,16 @@ class SupabaseCoreStore:
         if not data.get("access_token"):
             return ConfirmationView()
         return self._session(data)
+
+    def set_app_password(self, token: str, value: AppPasswordInput) -> None:
+        # The caller has already verified this live session and its App profile.
+        # Auth remains the authority for password policy and any reauthentication.
+        self._request(
+            "PUT",
+            "/auth/v1/user",
+            token=token,
+            body={"password": value.password.get_secret_value()},
+        )
 
     def login(self, value: LoginInput) -> SessionView:
         return self._session(
