@@ -69,6 +69,12 @@ add 不覆寫既有同名規則；移除不要求憑證仍有效。API規則的�
 
 至少需要兩個真實測試帳號才能驗全員確認；可以同一支手機依序登出切帳號。示範資料中的人物不會自動代為同意。既有全員確認及權限沒有放寬。
 
+## Safari 成功但 Expo Go 仍失敗時
+
+完整從多工畫面關閉 Expo Go，再掃 App QR，確保重新建立連線並載入最新 JS。「檢查目前測試連線」會顯示實際 API，先用不帶帳密／Cookie、不讀 SecureStore 的原生 fetch 檢查 `/health`（最多10秒），再檢查原有 API client 的 readiness。前者200、後者失敗時畫面會明確區分；HTTP403表示後端已收到但拒絕來源，`ERR_NETWORK`只代表尚無HTTP回應，不能單憑代碼判定是憑證。回報診斷代碼即可，不需提供帳密、Token或內部錯誤內容。檢查不刪登入資料、不修改TLS信任、不建立帳號。
+
+2026-10-22 實機進度：本人已確認 iPhone Safari 的 HTTPS health 無警告且正常回 JSON。Expo Go 的更新後診斷與登入仍待本人回報，不能標示全流程通過。
+
 **Apple AI 保留在原生版**。Expo Go 自動使用 Windows 本機訪談與語義模型；Google 按鈕不顯示。Apple／Google原生回跳、HEIC與背景切換、推播／語音等仍以各功能原來限制為準。不能把電腦自動測試、manifest與iOS bundle產生成功當成手機實際驗收；記錄本人實測結果再標完成。
 
 測完 Ctrl+C 停 Expo、API及模型；移除測試 CA 信任和這次的精確規則。未部署、不收費、不 push。
