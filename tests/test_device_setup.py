@@ -9,7 +9,7 @@ import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
-from app.core.device_setup import check_tls, device_addresses, issue_tls, load_device
+from app.core.device_setup import check_tls, device_addresses, issue_tls, load_device, server_chain
 from scripts.device_link import export_public, network_problem
 
 
@@ -88,6 +88,24 @@ def test_mismatched_leaf_key_is_refused(prepared):
         check_tls("192.168.1.10", tls / "server.pem", other / "server-key.pem", tls / "ca.pem")
 
 
+def test_server_chain_includes_only_public_leaf_and_issuer_and_preserves_existing_material(
+    prepared,
+):
+    _, tls = prepared
+    leaf, ca = tls / "server.pem", tls / "ca.pem"
+    original = {p.name: p.read_bytes() for p in tls.iterdir()}
+    chain = server_chain(leaf, ca)
+    assert chain.read_bytes() == leaf.read_bytes() + ca.read_bytes()
+    assert chain.read_bytes().count(b"BEGIN CERTIFICATE") == 2
+    assert b"PRIVATE KEY" not in chain.read_bytes()
+    for name, value in original.items():
+        assert (tls / name).read_bytes() == value
+    assert server_chain(leaf, ca) == chain
+    chain.write_text("unexpected existing content")
+    with pytest.raises(ValueError, match="differs"):
+        server_chain(leaf, ca)
+
+
 def test_device_configuration_ignores_ambient_paid_and_cloud_modes(prepared, monkeypatch):
     root, _ = prepared
     for key, value in {
@@ -148,7 +166,7 @@ def test_real_tls_requires_trusted_ca_and_matching_hostname(prepared):
             log_level="error",
             lifespan="off",
             access_log=False,
-            ssl_certfile=str(tls / "server.pem"),
+            ssl_certfile=str(server_chain(tls / "server.pem", tls / "ca.pem")),
             ssl_keyfile=str(tls / "server-key.pem"),
         )
     )

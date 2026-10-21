@@ -15,9 +15,9 @@ def main():
         "--serve", action="store_true", help="Explicitly start the configured TLS listener"
     )
     args = parser.parse_args()
-    from app.core.device_setup import load_device
+    from app.core.device_setup import load_device, server_chain
 
-    settings, (cert, key, _), tls = load_device(ROOT, apply_environment=True)
+    settings, (cert, key, ca), tls = load_device(ROOT, apply_environment=True)
     host = settings.core_device_test_host
     print(
         "Device profile and TLS SAN/chain/key/validity checks passed. "
@@ -58,7 +58,7 @@ def main():
             "app.main:app",
             host=host,
             port=8443,
-            ssl_certfile=str(cert),
+            ssl_certfile=str(server_chain(cert, ca)),
             ssl_keyfile=str(key),
             ssl_version=ssl.PROTOCOL_TLS_SERVER,
             proxy_headers=False,

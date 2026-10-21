@@ -129,6 +129,26 @@ def issue_tls(path: Path, host: str):
         (path / name).chmod(0o600)
 
 
+def server_chain(cert_path: Path, ca_path: Path) -> Path:
+    """Include the issuer without replacing the leaf, CA, key or trust policy."""
+    cert = x509.load_pem_x509_certificate(cert_path.read_bytes())
+    ca = x509.load_pem_x509_certificate(ca_path.read_bytes())
+    cert.verify_directly_issued_by(ca)
+    ca.verify_directly_issued_by(ca)
+    content = cert.public_bytes(serialization.Encoding.PEM) + ca.public_bytes(
+        serialization.Encoding.PEM
+    )
+    target = cert_path.with_name("server-chain.pem")
+    if target.exists():
+        if target.read_bytes() != content:
+            raise ValueError("Existing server chain differs; inspect it before replacing")
+    else:
+        with target.open("xb") as stream:
+            stream.write(content)
+        target.chmod(0o600)
+    return target
+
+
 def check_tls(host: str, cert_path: Path, key_path: Path, ca_path: Path):
     if not all(p.is_file() for p in (cert_path, key_path, ca_path)):
         raise ValueError("TLS certificate, key and public CA files are required")
