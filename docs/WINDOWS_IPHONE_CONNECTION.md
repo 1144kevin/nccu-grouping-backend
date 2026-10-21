@@ -2,6 +2,8 @@
 
 2026-10-22。Mac 接續文件：[MAC_CONNECT_WINDOWS.md](MAC_CONNECT_WINDOWS.md)。本輪只連原 Supabase 開發專案，不部署、不使用付費服務；既有loopback模式保留。
 
+若先用 Expo Go 測信箱登入與既有流程，依 [EXPO_GO_IPHONE.md](EXPO_GO_IPHONE.md) 啟動專用掃碼入口；不需 Mac 重建，Apple AI／Google 原生登入仍留給正常開發版。
+
 ## 目前已設定
 
 本人 iPhone 開個人熱點；Windows 位址及手機閘道已實際核對。`device_link.py check` 顯示的設定才是最新值。Windows僅此熱點介面設Private，防火牆規則 `NCCUGrouping-PrivateDevice-8443` 只允許精確 host／client IP及TCP8443；沒有開整個子網路、修改路由器或關閉防火牆。

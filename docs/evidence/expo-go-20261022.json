@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-22",
+  "mode": "iPhone Expo Go, email/password, existing Supabase development project",
+  "backend_tests_passed": 525,
+  "app_tests_passed": 193,
+  "profile_relay_release_contract_tests_passed": 12,
+  "typescript_and_selected_lint": "passed",
+  "ios_manifest": {
+    "http_status": 200,
+    "sdk": "57.0.0",
+    "bundle_and_debugger_host": "checked private relay address, not localhost"
+  },
+  "ios_bundle": {
+    "http_status": 200,
+    "expected_https_api_present": true,
+    "expo_go_copy_present": true
+  },
+  "network": {
+    "metro": "localhost:18081",
+    "relay": "exact private Windows IPv4:8081",
+    "relay_sources": "only checked exact iPhone IPv4(s), HTTP and WebSocket",
+    "firewall": "Private, exact local/client IPv4, TCP8081",
+    "api": "existing private HTTPS8443",
+    "model": "existing loopback11434, cloud disabled",
+    "ca_download": "single verified public DER CA; no private key or env export"
+  },
+  "account": {
+    "expo_cli_login_verified": true,
+    "matching_expo_go_account": "confirmed by owner",
+    "email_password_account_available": "confirmed by owner; credentials not requested or stored",
+    "auth_settings_changed": false,
+    "users_created": false
+  },
+  "preserved": ["Native Google callback", "Native Apple AI module", "All-party same-version consent", "Existing business APIs"],
+  "iphone_certificate_install_and_end_to_end": "pending owner device acceptance",
+  "deployed": false,
+  "paid_services_used": false,
+  "pushed": false
+}
