@@ -15,6 +15,7 @@ from app.core_cloud.store import PROJECT_URL, SupabaseCoreStore
 from app.core_local.schemas import SessionView
 
 CALLBACK_URL = "http://localhost:8081/auth/callback"
+ACCOUNT_CALLBACK_URL = "http://localhost:8082/auth/callback"
 IOS_CALLBACK_URL = "nccugrouping://auth/callback"
 FLOW_TTL = 600
 MAX_FLOWS = 128
@@ -22,7 +23,7 @@ MAX_FLOWS = 128
 
 class GoogleStartInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    client: Literal["web", "ios"] = "web"
+    client: Literal["web", "web_account", "ios"] = "web"
 
 
 class GoogleStartView(BaseModel):
@@ -47,11 +48,13 @@ class GoogleFlows:
         return hashlib.sha256(flow_id.encode()).hexdigest()
 
     def start(
-        self, store: SupabaseCoreStore, *, client: Literal["web", "ios"] = "web"
+        self, store: SupabaseCoreStore, *, client: Literal["web", "web_account", "ios"] = "web"
     ) -> GoogleStartView:
         from app.core.config import get_settings
 
         settings = getattr(store, "settings", None) or get_settings()
+        if client == "web_account" and settings.environment != "local":
+            raise HTTPException(403, "google_account_web_local_only")
         callback = (
             settings.cloud_google_web_callback if settings.core_cloud_enabled else CALLBACK_URL
         )
@@ -77,7 +80,11 @@ class GoogleFlows:
         query = urlencode(
             {
                 "provider": "google",
-                "redirect_to": IOS_CALLBACK_URL if client == "ios" else callback,
+                "redirect_to": IOS_CALLBACK_URL
+                if client == "ios"
+                else ACCOUNT_CALLBACK_URL
+                if client == "web_account"
+                else callback,
                 "code_challenge": challenge,
                 "code_challenge_method": "s256",
                 "scopes": "openid email profile",

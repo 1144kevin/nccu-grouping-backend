@@ -46,7 +46,7 @@ def main() -> None:
     os.environ["CORE_SUPABASE_ENABLED"] = "true"
     os.environ["API_V1_PREFIX"] = "/api/v1"
     os.environ["BACKEND_CORS_ORIGINS"] = (
-        '["http://localhost:8081","http://127.0.0.1:8081"]'
+        '["http://localhost:8081","http://127.0.0.1:8081","http://localhost:8082"]'
     )
     os.environ["DEBUG"] = "false"
     # Share the current device landing page with desktop registrations too.

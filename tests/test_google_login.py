@@ -63,6 +63,20 @@ def test_ios_pkce_uses_only_fixed_native_redirect():
     assert parse_qs(urlsplit(started.authorize_url).query)["redirect_to"] == [IOS_CALLBACK_URL]
 
 
+def test_account_web_uses_a_separate_fixed_loopback_callback():
+    from app.core.config import Settings
+    from app.core_cloud.google import ACCOUNT_CALLBACK_URL
+
+    store = configured_store()
+    store.settings = Settings(_env_file=None)
+    started = GoogleFlows().start(store, client="web_account")
+    assert parse_qs(urlsplit(started.authorize_url).query)["redirect_to"] == [ACCOUNT_CALLBACK_URL]
+    store.settings.environment = "cloud"
+    with pytest.raises(HTTPException) as error:
+        GoogleFlows().start(store, client="web_account")
+    assert error.value.detail == "google_account_web_local_only"
+
+
 def test_api_ios_oauth_requires_explicit_opt_in_and_rejects_redirect(monkeypatch):
     monkeypatch.setenv("CORE_SUPABASE_ENABLED", "true")
     monkeypatch.setenv("CORE_LOCAL_ENABLED", "false")
