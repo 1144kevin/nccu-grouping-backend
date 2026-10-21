@@ -73,7 +73,7 @@ def test_grounding_correction_is_reported_separately_from_model_error():
 @pytest.mark.parametrize("vector", [[0] * 512, [float("nan")] * 512, [1], [True] * 512])
 def test_invalid_vectors_never_count_as_retrieval_success(vector):
     value = report()
-    case = json.loads(FIXTURES.read_text())["retrieval"][0]
+    case = json.loads(FIXTURES.read_text(encoding="utf-8"))["retrieval"][0]
     value["embedding_runs"] = [
         {
             "model_id": "synthetic-tests-only",
@@ -91,7 +91,7 @@ def test_invalid_vectors_never_count_as_retrieval_success(vector):
 
 def test_good_640d_retrieval_does_not_claim_existing_512d_database_compatibility():
     value = report()
-    cases = json.loads(FIXTURES.read_text())["retrieval"]
+    cases = json.loads(FIXTURES.read_text(encoding="utf-8"))["retrieval"]
     value["embedding_runs"] = [
         {
             "model_id": "synthetic-tests-only-640d",
