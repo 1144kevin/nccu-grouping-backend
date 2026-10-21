@@ -77,6 +77,10 @@ add 不覆寫既有同名規則；移除不要求憑證仍有效。API規則的�
 
 2026-10-22 實機進度：本人已確認 iPhone Safari 的 HTTPS health 無警告且正常回 JSON。Expo Go 原生 XHR 明確回報「The certificate for this server is invalid」，不是登入／資料庫錯誤；本人確認已安裝 CA 序號與 Windows 相同、日期正確。服務補上同一個 CA 的完整鏈後，實際 TLS1.3 送出2張憑證並通過 Windows 驗證，手機仍回報相同錯誤。iPhone重新開機及非開發JS對照也均未解決，已恢復一般開發模式。具體根因尚未確認；不能標示 Expo Go 已連通或全流程通過。沒有改成 HTTP API、忽略憑證驗證或放寬來源名單。接續使用 [Mac TLS診斷](MAC_EXPO_GO_TLS_DIAGNOSTIC.md) 取得Apple原生驗證原因；Windows已提供只含公開憑證的離線診斷ZIP，Swift尚未在Mac執行。
 
+後續更新（2026-10-22）：本人回報 Expo Go「連上了」，接著登入顯示「雲端操作未完成」。因此前段為先前 TLS 排查紀錄，現在登入問題應獨立追查；恢復連線的具體原因未確認，尚未代表登入或全流程驗收通過。使用不存在的隔離帳號檢查 Auth，實際回應為 HTTP400、數字 `code: 400` 與 `error_code: invalid_credentials`。後端已兼容此格式與原有字串 `code`，帳密錯誤回401、未驗證信箱回400，未知錯誤仍回通用503，不回傳上游敏感本文。22個相關本機測試通過，實際開發專案的隔離錯誤登入也已驗證回401。沒有建立帳號、改密碼或略過驗證。
+
+Google 登入建立的帳號不一定有 App 密碼；Google 密碼不可代用。同信箱重複註冊也不會替既有 Google 帳號設定密碼。要保留同一帳號，須本人先以 Google 登入，再經已驗證的使用者 session 設定 App 密碼；目前尚無此設定畫面。不要透過 SQL 改 Auth 密碼、索取使用者密碼或關閉信箱驗證。詳見 [Supabase 身分連結 FAQ](https://supabase.com/docs/guides/auth/auth-identity-linking)。
+
 **Apple AI 保留在原生版**。Expo Go 自動使用 Windows 本機訪談與語義模型；Google 按鈕不顯示。Apple／Google原生回跳、HEIC與背景切換、推播／語音等仍以各功能原來限制為準。不能把電腦自動測試、manifest與iOS bundle產生成功當成手機實際驗收；記錄本人實測結果再標完成。
 
 測完 Ctrl+C 停 Expo、API及模型；移除測試 CA 信任和這次的精確規則。未部署、不收費、不 push。
