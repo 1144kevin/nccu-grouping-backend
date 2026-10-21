@@ -1,0 +1,495 @@
+{
+  "date": "2026-10-21",
+  "target_device_reported_by_user": {
+    "model": "iPhone 17",
+    "ios": "26.6.1"
+  },
+  "mac": {
+    "chip": "M1",
+    "ram_gb": 8
+  },
+  "scope": "standalone SwiftUI fixture-only probe; original App not built",
+  "fixture_sha256": "e88d9b25f3bfc086b43e27bf0b404dd634979a2e70a9ec7a5754382afb7bdf33",
+  "prepared": {
+    "intake_cases": 6,
+    "intake_rounds": 9,
+    "traditional_chinese_retrieval_cases": 11,
+    "embedding_configurations": 4
+  },
+  "portable_checks": {
+    "analyzer_pytest_passed": 8,
+    "ruff": "passed",
+    "project_plist": "passed",
+    "scheme_xml": "passed"
+  },
+  "native_build": {
+    "status": "passed_signed_installed_and_executed",
+    "exit_code": 0,
+    "xcode": "27.1",
+    "sdk": "iPhoneOS27.1",
+    "deployment_target": "iOS 26.0",
+    "jobs": 1,
+    "signed": true,
+    "installed": true,
+    "license_accepted": true,
+    "app": "ignored .local/apple-ai-probe-build/Build/Products/Debug-iphoneos/AppleAIProbe.app",
+    "unsigned_app_mib": 0.79,
+    "derived_data_mib": 83
+  },
+  "device_inference": "two_complete_real_device_runs",
+  "device_embeddings": "two_complete_real_device_runs",
+  "apple_ai_feasibility": "execution_verified_but_intake_not_ready;640D_retrieval_candidate_needs_migration",
+  "ollama_installed": false,
+  "qwen_downloaded": false,
+  "supabase_modified": false,
+  "pending_user_actions": [],
+  "windows_followup": "docs/APPLE_AI_PROBE_RESULTS.md",
+  "device_tooling": {
+    "status": "verified",
+    "physical_device": "iPhone 17 (iPhone18,3)",
+    "os": "26.6.1",
+    "developer_mode": "enabled",
+    "model_availability": "available",
+    "developer_trust": "completed by user"
+  },
+  "assessment_complete": true,
+  "intake": {
+    "baseline": {
+      "recorded_rounds": 9,
+      "expected_rounds": 9,
+      "raw_passed": 1,
+      "grounded_passed": 2,
+      "total": 6,
+      "median_ms": 2564.52,
+      "first_recorded_ms": 4444.808006286621,
+      "cases": [
+        {
+          "id": "missing_then_complete",
+          "raw_failures": [
+            "facts.budget_max_twd",
+            "facts.delay_minutes",
+            "facts.duration_minutes",
+            "facts.location_id"
+          ],
+          "grounded_failures": [
+            "facts.budget_max_twd",
+            "facts.delay_minutes",
+            "facts.duration_minutes",
+            "facts.location_id",
+            "missing.role.order",
+            "missing.role.share"
+          ],
+          "grounding_warnings": [
+            "部分原句後續已有更新，舊資訊已清空；請核對最新說法。"
+          ]
+        },
+        {
+          "id": "budget_change",
+          "raw_failures": [
+            "facts.budget_max_twd"
+          ],
+          "grounded_failures": [
+            "facts.delay_minutes",
+            "facts.duration_minutes"
+          ],
+          "grounding_warnings": [
+            "預算缺少對應原句，已清空並補問，不會帶入猜測金額。",
+            "時間缺少可核對的相對時間原句，已保留為待補問。"
+          ]
+        },
+        {
+          "id": "latest_role_refusal",
+          "raw_failures": [
+            "forbidden.role.pickup"
+          ],
+          "grounded_failures": [
+            "missing.role.order"
+          ],
+          "grounding_warnings": [
+            "預算缺少對應原句，已清空並補問，不會帶入猜測金額。",
+            "時間缺少可核對的相對時間原句，已保留為待補問。",
+            "部分原句後續已有更新，舊資訊已清空；請核對最新說法。"
+          ]
+        },
+        {
+          "id": "group_total_uncertain",
+          "raw_failures": [],
+          "grounded_failures": [],
+          "grounding_warnings": []
+        },
+        {
+          "id": "vague_tonight",
+          "raw_failures": [
+            "facts.delay_minutes"
+          ],
+          "grounded_failures": [],
+          "grounding_warnings": [
+            "時間缺少可核對的相對時間原句，已保留為待補問。"
+          ]
+        },
+        {
+          "id": "unknown_not_free",
+          "raw_failures": [
+            "facts.budget_max_twd"
+          ],
+          "grounded_failures": [
+            "facts.budget_unknown"
+          ],
+          "grounding_warnings": [
+            "預算缺少對應原句，已清空並補問，不會帶入猜測金額。"
+          ]
+        }
+      ]
+    },
+    "guided_fields_v2": {
+      "recorded_rounds": 9,
+      "expected_rounds": 9,
+      "raw_passed": 0,
+      "grounded_passed": 2,
+      "total": 6,
+      "median_ms": 2971.22,
+      "first_recorded_ms": 3330.65402507782,
+      "cases": [
+        {
+          "id": "missing_then_complete",
+          "raw_failures": [
+            "facts.kind",
+            "facts.known_cost_twd",
+            "round.1.invalid_schema"
+          ],
+          "grounded_failures": [
+            "facts.kind",
+            "round.1.invalid_schema"
+          ],
+          "grounding_warnings": [
+            "摘要中的地點與已確認欄位不符，已移除猜測地點；請再次檢查需求表單。",
+            "報價缺少對應原句，保留未知，請自行確認。"
+          ]
+        },
+        {
+          "id": "budget_change",
+          "raw_failures": [
+            "facts.budget_max_twd",
+            "facts.delay_minutes",
+            "facts.duration_minutes"
+          ],
+          "grounded_failures": [
+            "facts.delay_minutes"
+          ],
+          "grounding_warnings": [
+            "報價缺少對應原句，保留未知，請自行確認。",
+            "摘要中的地點與已確認欄位不符，已移除猜測地點；請再次檢查需求表單。"
+          ]
+        },
+        {
+          "id": "latest_role_refusal",
+          "raw_failures": [
+            "forbidden.role.pickup"
+          ],
+          "grounded_failures": [
+            "missing.role.order"
+          ],
+          "grounding_warnings": [
+            "預算缺少對應原句，已清空並補問，不會帶入猜測金額。",
+            "報價缺少對應原句，保留未知，請自行確認。",
+            "部分原句後續已有更新，舊資訊已清空；請核對最新說法。",
+            "摘要中的地點與已確認欄位不符，已移除猜測地點；請再次檢查需求表單。"
+          ]
+        },
+        {
+          "id": "group_total_uncertain",
+          "raw_failures": [
+            "facts.cost_needs_clarification"
+          ],
+          "grounded_failures": [],
+          "grounding_warnings": [
+            "部分原句後續已有更新，舊資訊已清空；請核對最新說法。",
+            "摘要中的地點與已確認欄位不符，已移除猜測地點；請再次檢查需求表單。"
+          ]
+        },
+        {
+          "id": "vague_tonight",
+          "raw_failures": [
+            "facts.delay_minutes"
+          ],
+          "grounded_failures": [],
+          "grounding_warnings": [
+            "報價缺少對應原句，保留未知，請自行確認。",
+            "時間缺少可核對的相對時間原句，已保留為待補問。"
+          ]
+        },
+        {
+          "id": "unknown_not_free",
+          "raw_failures": [
+            "facts.budget_max_twd",
+            "facts.budget_unknown",
+            "facts.known_cost_twd"
+          ],
+          "grounded_failures": [
+            "facts.budget_unknown"
+          ],
+          "grounding_warnings": [
+            "預算缺少對應原句，已清空並補問，不會帶入猜測金額。",
+            "報價缺少對應原句，保留未知，請自行確認。"
+          ]
+        }
+      ]
+    },
+    "protocols": [
+      "v1-instructions-only",
+      "v2-guided-fields"
+    ],
+    "quality": "not_ready",
+    "fixtures": "same 6 cases / 9 rounds in both runs; known regression set"
+  },
+  "embeddings": [
+    {
+      "model_id": "apple-nl-sentence:zh-Hant:rev0:original-zh-Hant-v1",
+      "dimensions": 0,
+      "database_dimension_compatible": false,
+      "elapsed_ms": 0.26988983154296875,
+      "passed": 0,
+      "total": 11,
+      "missing": [
+        "bakery-surplus",
+        "budget-topic",
+        "coupon-pooling",
+        "hot-soup",
+        "pickup-complement",
+        "pizza-sharing",
+        "rainy-pickup",
+        "resource-complement",
+        "savory",
+        "small-portion",
+        "vegetarian-topic"
+      ],
+      "failures": [
+        "sentence_embedding_unavailable",
+        "invalid_or_unavailable_dimensions",
+        "incomplete_cases"
+      ],
+      "cases": {}
+    },
+    {
+      "model_id": "apple-nl-sentence:zh-Hant:rev0:icu-Traditional-Simplified-v1",
+      "dimensions": 0,
+      "database_dimension_compatible": false,
+      "elapsed_ms": 0.053048133850097656,
+      "passed": 0,
+      "total": 11,
+      "missing": [
+        "bakery-surplus",
+        "budget-topic",
+        "coupon-pooling",
+        "hot-soup",
+        "pickup-complement",
+        "pizza-sharing",
+        "rainy-pickup",
+        "resource-complement",
+        "savory",
+        "small-portion",
+        "vegetarian-topic"
+      ],
+      "failures": [
+        "sentence_embedding_unavailable",
+        "invalid_or_unavailable_dimensions",
+        "incomplete_cases"
+      ],
+      "cases": {}
+    },
+    {
+      "model_id": "apple-nl-sentence:zh-Hans:rev1:original-zh-Hant-v1",
+      "dimensions": 640,
+      "database_dimension_compatible": false,
+      "elapsed_ms": 252.61402130126953,
+      "passed": 9,
+      "total": 11,
+      "missing": [],
+      "failures": [],
+      "cases": {
+        "hot-soup": {
+          "passed": true,
+          "top_index": 1,
+          "expected_index": 1,
+          "top_margin": 0.053943,
+          "tied": false
+        },
+        "small-portion": {
+          "passed": true,
+          "top_index": 1,
+          "expected_index": 1,
+          "top_margin": 0.046236,
+          "tied": false
+        },
+        "pickup-complement": {
+          "passed": true,
+          "top_index": 0,
+          "expected_index": 0,
+          "top_margin": 0.002478,
+          "tied": false
+        },
+        "coupon-pooling": {
+          "passed": true,
+          "top_index": 1,
+          "expected_index": 1,
+          "top_margin": 0.051247,
+          "tied": false
+        },
+        "savory": {
+          "passed": true,
+          "top_index": 1,
+          "expected_index": 1,
+          "top_margin": 0.007788,
+          "tied": false
+        },
+        "vegetarian-topic": {
+          "passed": true,
+          "top_index": 1,
+          "expected_index": 1,
+          "top_margin": 0.029997,
+          "tied": false
+        },
+        "pizza-sharing": {
+          "passed": true,
+          "top_index": 1,
+          "expected_index": 1,
+          "top_margin": 0.041617,
+          "tied": false
+        },
+        "bakery-surplus": {
+          "passed": true,
+          "top_index": 0,
+          "expected_index": 0,
+          "top_margin": 0.028213,
+          "tied": false
+        },
+        "rainy-pickup": {
+          "passed": false,
+          "top_index": 1,
+          "expected_index": 0,
+          "top_margin": 0.008193,
+          "tied": false
+        },
+        "budget-topic": {
+          "passed": false,
+          "top_index": 2,
+          "expected_index": 1,
+          "top_margin": 0.000247,
+          "tied": false
+        },
+        "resource-complement": {
+          "passed": true,
+          "top_index": 1,
+          "expected_index": 1,
+          "top_margin": 0.009447,
+          "tied": false
+        }
+      }
+    },
+    {
+      "model_id": "apple-nl-sentence:zh-Hans:rev1:icu-Traditional-Simplified-v1",
+      "dimensions": 640,
+      "database_dimension_compatible": false,
+      "elapsed_ms": 178.83098125457764,
+      "passed": 7,
+      "total": 11,
+      "missing": [],
+      "failures": [],
+      "cases": {
+        "hot-soup": {
+          "passed": true,
+          "top_index": 1,
+          "expected_index": 1,
+          "top_margin": 0.055709,
+          "tied": false
+        },
+        "small-portion": {
+          "passed": true,
+          "top_index": 1,
+          "expected_index": 1,
+          "top_margin": 0.029158,
+          "tied": false
+        },
+        "pickup-complement": {
+          "passed": false,
+          "top_index": 1,
+          "expected_index": 0,
+          "top_margin": 0.000641,
+          "tied": false
+        },
+        "coupon-pooling": {
+          "passed": true,
+          "top_index": 1,
+          "expected_index": 1,
+          "top_margin": 0.039222,
+          "tied": false
+        },
+        "savory": {
+          "passed": false,
+          "top_index": 0,
+          "expected_index": 1,
+          "top_margin": 0.020889,
+          "tied": false
+        },
+        "vegetarian-topic": {
+          "passed": true,
+          "top_index": 1,
+          "expected_index": 1,
+          "top_margin": 0.028738,
+          "tied": false
+        },
+        "pizza-sharing": {
+          "passed": true,
+          "top_index": 1,
+          "expected_index": 1,
+          "top_margin": 0.032855,
+          "tied": false
+        },
+        "bakery-surplus": {
+          "passed": true,
+          "top_index": 0,
+          "expected_index": 0,
+          "top_margin": 0.035622,
+          "tied": false
+        },
+        "rainy-pickup": {
+          "passed": false,
+          "top_index": 1,
+          "expected_index": 0,
+          "top_margin": 0.002214,
+          "tied": false
+        },
+        "budget-topic": {
+          "passed": true,
+          "top_index": 1,
+          "expected_index": 1,
+          "top_margin": 0.018073,
+          "tied": false
+        },
+        "resource-complement": {
+          "passed": false,
+          "top_index": 0,
+          "expected_index": 1,
+          "top_margin": 0.004753,
+          "tied": false
+        }
+      }
+    }
+  ],
+  "vector_repeat_max_coordinate_difference": 0.0,
+  "vector_repeat_scope": "same iPhone, same revision and preprocessing; not cross-device evidence",
+  "vector_schema_migration_required": [
+    640
+  ],
+  "limitations": [
+    "Known regression fixtures, not a blind accuracy benchmark.",
+    "Preliminary gate: all six raw/grounded intake cases and >=9/11 retrieval on 512D.",
+    "A model configuration must be evaluated separately; vector spaces never mix.",
+    "This does not verify cross-device vector compatibility, Supabase or App consent.",
+    "Total physical RAM is recorded, not model memory usage or a memory limit.",
+    "No airplane-mode run",
+    "No full App, Supabase migration or cross-device test",
+    "v2 did not improve end-to-end extraction"
+  ],
+  "probe_swift_sha256": "e296034ddd2987bd75f69b406f4820656ecb5e9238f76246048356d670f75e47"
+}

@@ -2,11 +2,23 @@
 
 更新：2026-10-20。這是一份可直接交給 Mac 上 Codex 閱讀及依序操作的交接指令。
 
+**2026-10-21方向更新：**本人已指定改走iPhone Apple原生裝置端AI，不在Mac安裝Ollama。
+已完成獨立小型Probe真機測試，見 [結果與Windows接續](APPLE_AI_PROBE_RESULTS.md)。
+需求抽取尚未達標；Apple句向量實際640維，繁體原文檢索9/11，不能直接沿用現有512維資料層。
+後續主要開發、API、資料庫與容器工作留在Windows；Mac只負責必要Apple SDK編譯／簽章，
+AI效果由iPhone實測。下方Ollama流程保留為原路線紀錄，不是目前Mac必做步驟。
+
+**原 App 最小串接續接：**App repo 已加入 `modules/apple-intake` 與共用訪談／手動表單，
+只產生待核對摘要及補問，明確採用後只改標題；尚未整合向量搜尋。
+因這台 Mac 尚無可供手機登入的 API 設定，另提供不登入、不儲存的本機訪談試用入口。
+開關、操作驗收、原生建置與 Windows 後續見相鄰 App repo 的 `docs/APPLE_INTAKE.md`。
+下方「Apple 裝置模型尚未整合」是先前完整功能驗收狀態，不應當成要求重新安裝模型。
+
 ## 先讀這段，再執行
 
 目標：保留既有功能，在 Mac 啟動本機 App／API，沿用 Supabase 開發資料庫，
 驗證登入、拼單與偷揪 AI，再準備 iPhone 實測。**不部署、不上傳 TestFlight、
-不使用付費 API／建置服務、不 push。** Apple 裝置模型尚未整合。
+不使用付費 API／建置服務、不 push。** Apple 裝置 AI 的最小訪談串接見相鄰 App 文件，完整流程仍待驗收。
 
 只操作這兩個專案及指定 Supabase 開發專案：
 
