@@ -106,6 +106,28 @@ def test_signup_pending_confirmation_does_not_invent_a_session(cloud):
     assert len(requests) == 1 and "authorization" not in requests[0].headers
 
 
+@pytest.mark.parametrize(
+    "data,expected_status,expected_detail",
+    [
+        ({"code": 400, "error_code": "invalid_credentials"}, 401, "invalid_email_or_password"),
+        ({"error_code": "email_not_confirmed"}, 400, "email_confirmation_required"),
+        ({"code": "email_not_confirmed"}, 400, "email_confirmation_required"),
+        ({"code": 400, "error_code": "unknown_auth_error"}, 503, "supabase_operation_failed"),
+        ({"code": 400, "error_code": None}, 503, "supabase_operation_failed"),
+    ],
+)
+def test_login_accepts_both_auth_error_formats_without_exposing_details(
+    cloud, data, expected_status, expected_detail
+):
+    store, requests, responses = cloud
+    responses.append((400, {**data, "msg": "private account details"}))
+    with pytest.raises(HTTPException) as failure:
+        store.login(LoginInput(email="synthetic@example.test", password="Dedicated-test-password"))
+    assert failure.value.status_code == expected_status
+    assert failure.value.detail == expected_detail
+    assert len(requests) == 1
+
+
 def test_revoked_supabase_session_is_401_even_when_auth_returns_403(cloud):
     store, _, responses = cloud
     responses.append((403, {"code": "session_not_found", "msg": "sensitive internal data"}))

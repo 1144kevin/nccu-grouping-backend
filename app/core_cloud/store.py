@@ -62,6 +62,10 @@ class SupabaseCoreStore:
             if not isinstance(data, dict):
                 data = {}
             code = data.get("code", "")
+            # Auth may return a numeric HTTP code plus a separate error_code;
+            # PostgREST uses the string code field. Keep both formats compatible.
+            if not isinstance(code, str) or not code:
+                code = data.get("error_code", "")
             if path == "/auth/v1/user" and response.status_code in (401, 403):
                 raise HTTPException(401, "invalid_or_expired_session")
             if isinstance(code, str) and code.startswith("PT") and code[2:].isdigit():
