@@ -14,7 +14,7 @@
 
 保留既有 Web `http://localhost:8081/auth/callback`、原生 `nccugrouping://auth/callback` 及其他已使用的精確回跳。不要加萬用字元，也不要關閉信箱驗證。電腦 Google 使用明確 callback，因此 Site URL 改為手機驗證頁不應改變既有 Google 的回跳。
 
-**目前雲端設定尚待本人儲存／確認**：管理 API GET config/auth 回403；電腦操作工具無 Chrome 授權，未修改雲端設定，不能把程式完成當作 allowlist 已生效。
+2026-10-22 本人已回覆「我新增好了」，確認完成上述 URL Configuration 步驟。這是本人回報，尚未由管理 API 獨立讀回：該 API 回403，電腦操作工具也無 Chrome 授權。接續以真人 Google 回跳及手機信箱登入驗收。
 
 ## 原本只用 Google 的帳號
 
@@ -61,6 +61,6 @@ npm run dev:account
 - 後端認證、裝置、OAuth 與雲端邊界 118 項回歸通過；前端完整202項通過，新增密碼重試及 OAuth 選定測試7項通過。TypeScript與變更檔 lint 通過。
 - 全新臨時瀏覽器、攔截 Auth 的隔離畫面驗證通過：設定密碼僅送出一次、清空輸入、驗證頁成功／失敗結果、清除 URL fragment、不使用 local/session storage。找到同頁新 fragment 未更新結果的問題並修復。真實 Auth 寫入0次。
 - 本機 HTTP 健康檢查、驗證頁及電腦 Web 登入頁回200；手機 TLS 與健康檢查已由本人先前回報連通。
-- 尚待本人實際儲存 Supabase allowlist、Google 登入與設定自己的密碼，再用 iPhone 登入。測試程式不替本人登入或設定真實密碼，也沒有發送新的驗證信。
+- 本人已確認儲存回跳設定；尚待本人 Google 登入與設定自己的密碼，再用 iPhone 登入。測試程式不替本人登入或設定真實密碼，也沒有發送新的驗證信。
 
 依據：[Supabase Redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls)、[OAuth 帳號加入密碼](https://supabase.com/docs/guides/auth/auth-identity-linking)、[更新已登入使用者](https://supabase.com/docs/reference/javascript/auth-updateuser)。
