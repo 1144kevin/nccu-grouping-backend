@@ -1,5 +1,5 @@
 from unittest.mock import patch
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from fastapi import HTTPException
 
@@ -71,3 +71,25 @@ def test_coordination_messages_require_session_idempotency_and_valid_text(cloud_
             ).status_code
             == 422
         )
+
+
+def test_coordination_accepts_app_request_keys_and_preserves_them_across_retry(cloud_api):
+    client, store, _ = cloud_api
+    path = ROOT + "/matches/" + str(uuid4()) + "/room"
+    key = "post-1792645200000-abc123def456-ghi789jkl012"
+    expected = str(uuid5(NAMESPACE_URL, "core-stealth-room:" + key))
+    store._request.return_value = {"id": str(uuid4()), "content": "想喝什麼"}
+    for _ in range(2):
+        response = client.post(
+            path,
+            json={"content": "想喝什麼"},
+            headers={**HEADERS, "Idempotency-Key": key},
+        )
+        assert response.status_code == 201
+        assert store._request.call_args.kwargs["body"]["args"]["request_key"] == expected
+    assert store._request.call_args_list[0] == store._request.call_args_list[1]
+    store._request.reset_mock()
+    for invalid in (None, "short", "x" * 101):
+        headers = HEADERS if invalid is None else {**HEADERS, "Idempotency-Key": invalid}
+        assert client.post(path, json={"content": "想喝什麼"}, headers=headers).status_code == 422
+    store._request.assert_not_called()

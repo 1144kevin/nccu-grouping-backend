@@ -1,5 +1,5 @@
 from typing import Annotated, Literal
-from uuid import UUID
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Response
 from pydantic import Field, field_validator
@@ -117,12 +117,22 @@ def coordination_send(
     proposal_id: UUID,
     value: CoordinationMessage,
     service: Cloud,
-    key: Annotated[UUID, Header(alias="Idempotency-Key")],
+    key: Annotated[str, Header(alias="Idempotency-Key", min_length=12, max_length=100)],
 ):
+    # App request identifiers are opaque strings (post-...). Keep existing UUID
+    # clients compatible and map opaque identifiers deterministically for SQL.
+    try:
+        request_key = UUID(key)
+    except ValueError:
+        request_key = uuid5(NAMESPACE_URL, "core-stealth-room:" + key)
     return room_rpc(
         service,
         "send",
-        {"proposal_id": str(proposal_id), "request_key": str(key), "content": value.content},
+        {
+            "proposal_id": str(proposal_id),
+            "request_key": str(request_key),
+            "content": value.content,
+        },
     )
 
 
