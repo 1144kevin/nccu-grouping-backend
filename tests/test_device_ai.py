@@ -44,6 +44,7 @@ def test_device_ai_opt_in_is_explicit_and_never_inherited():
         "/api/v1/stealth-cloud/intake",
         "/api/v1/stealth-cloud/matches/semantic",
         "/api/v1/stealth-cloud/matches/discover",
+        "/api/v1/recommendations/semantic",
     ],
 )
 async def test_device_ai_boundary_rejects_before_inference(path):
@@ -86,6 +87,7 @@ async def test_device_ai_boundary_rejects_before_inference(path):
         "/api/v1/stealth-cloud/intake",
         "/api/v1/stealth-cloud/matches/semantic",
         "/api/v1/stealth-cloud/matches/discover",
+        "/api/v1/recommendations/semantic",
     ],
 )
 async def test_device_ai_disabled_but_manual_flow_is_available(path):

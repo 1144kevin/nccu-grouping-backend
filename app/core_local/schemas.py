@@ -201,9 +201,16 @@ class RecommendationInfo(BaseModel):
     reasons: list[RecommendationReason] = Field(min_length=1, max_length=4)
 
 
+class FeedSemanticInfo(BaseModel):
+    similarity: float = Field(ge=-1, le=1, allow_inf_nan=False)
+    model_id: str
+    combined_score: float = Field(ge=0, le=100, allow_inf_nan=False)
+
+
 class RecommendedPostView(PostView):
     # Nullable while the reviewed development SQL upgrade has not been applied.
     recommendation: RecommendationInfo | None = None
+    semantic_recommendation: FeedSemanticInfo | None = None
 
 
 class RecommendationPage(BaseModel):

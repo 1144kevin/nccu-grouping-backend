@@ -197,6 +197,45 @@
         ]
       }
     },
+    "/api/v1/auth/password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Set App Password",
+        "operationId": "set_app_password_api_v1_auth_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppPasswordInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/auth/refresh": {
       "post": {
         "tags": [
@@ -2057,6 +2096,98 @@
         }
       }
     },
+    "/api/v1/recommendations/semantic": {
+      "post": {
+        "tags": [
+          "recommendations"
+        ],
+        "summary": "Semantic Recommendations",
+        "operationId": "semantic_recommendations_api_v1_recommendations_semantic_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedSemanticRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedSemanticPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/recommendations/semantic/validate": {
+      "post": {
+        "tags": [
+          "recommendations"
+        ],
+        "summary": "Validate Semantic Recommendations",
+        "operationId": "validate_semantic_recommendations_api_v1_recommendations_semantic_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedValidationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/recommendations": {
       "get": {
         "tags": [
@@ -2617,6 +2748,200 @@
                 "schema": {
                   "$ref": "#/components/schemas/SearchPage"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stealth-cloud/quick-status": {
+      "get": {
+        "tags": [
+          "stealth-supabase"
+        ],
+        "summary": "Quick Status",
+        "operationId": "quick_status_api_v1_stealth_cloud_quick_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/stealth-cloud/quick-start": {
+      "post": {
+        "tags": [
+          "stealth-supabase"
+        ],
+        "summary": "Start Quick",
+        "operationId": "start_quick_api_v1_stealth_cloud_quick_start_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 12,
+              "maxLength": 100,
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuickStart"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuickResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stealth-cloud/matches/{proposal_id}/room": {
+      "get": {
+        "tags": [
+          "stealth-supabase"
+        ],
+        "summary": "Coordination Room",
+        "operationId": "coordination_room_api_v1_stealth_cloud_matches__proposal_id__room_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Proposal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "stealth-supabase"
+        ],
+        "summary": "Coordination Send",
+        "operationId": "coordination_send_api_v1_stealth_cloud_matches__proposal_id__room_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Proposal Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 12,
+              "maxLength": 100,
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoordinationMessage"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -3407,6 +3732,28 @@
         ],
         "title": "AgentTermsDraft"
       },
+      "AppPasswordInput": {
+        "properties": {
+          "password": {
+            "type": "string",
+            "format": "password",
+            "title": "Password",
+            "writeOnly": true
+          },
+          "expected_user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Expected User Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "password",
+          "expected_user_id"
+        ],
+        "title": "AppPasswordInput"
+      },
       "AppealInput": {
         "properties": {
           "request_key": {
@@ -4140,6 +4487,11 @@
             ],
             "title": "Formed At"
           },
+          "coordination_opened": {
+            "type": "boolean",
+            "title": "Coordination Opened",
+            "default": false
+          },
           "agent_draft": {
             "anyOf": [
               {
@@ -4540,6 +4892,22 @@
         ],
         "title": "ConversationView"
       },
+      "CoordinationMessage": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Content"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "CoordinationMessage"
+      },
       "DeletionCounts": {
         "properties": {
           "owned_posts": {
@@ -4858,6 +5226,132 @@
         ],
         "title": "DraftOutput"
       },
+      "FeedSemanticInfo": {
+        "properties": {
+          "similarity": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Similarity"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "combined_score": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Combined Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "similarity",
+          "model_id",
+          "combined_score"
+        ],
+        "title": "FeedSemanticInfo"
+      },
+      "FeedSemanticPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendedPostView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "unavailable",
+              "empty"
+            ],
+            "title": "Status"
+          },
+          "candidate_count": {
+            "type": "integer",
+            "title": "Candidate Count"
+          },
+          "pool_limit": {
+            "type": "integer",
+            "title": "Pool Limit",
+            "default": 64
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "default": false
+          },
+          "preference_version": {
+            "type": "integer",
+            "title": "Preference Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "status",
+          "candidate_count",
+          "preference_version"
+        ],
+        "title": "FeedSemanticPage"
+      },
+      "FeedSemanticRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Query"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "FeedSemanticRequest"
+      },
+      "FeedValidationRequest": {
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 64,
+            "minItems": 1,
+            "title": "Ids"
+          },
+          "preference_version": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Preference Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ids",
+          "preference_version"
+        ],
+        "title": "FeedValidationRequest"
+      },
       "GoogleFinishInput": {
         "properties": {
           "flow_id": {
@@ -4891,6 +5385,7 @@
             "type": "string",
             "enum": [
               "web",
+              "web_account",
               "ios"
             ],
             "title": "Client",
@@ -6268,6 +6763,58 @@
         ],
         "title": "PublicProfileView"
       },
+      "QuickResult": {
+        "properties": {
+          "created": {
+            "$ref": "#/components/schemas/CloudSignalCreated"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "interpretation": {
+            "type": "string",
+            "enum": [
+              "local_model",
+              "keyword_fallback",
+              "retry"
+            ],
+            "title": "Interpretation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "created",
+          "sources",
+          "interpretation"
+        ],
+        "title": "QuickResult"
+      },
+      "QuickStart": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "activate_agent": {
+            "type": "boolean",
+            "title": "Activate Agent",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "QuickStart"
+      },
       "RecommendationInfo": {
         "properties": {
           "version": {
@@ -6483,6 +7030,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/RecommendationInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "semantic_recommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeedSemanticInfo"
               },
               {
                 "type": "null"
