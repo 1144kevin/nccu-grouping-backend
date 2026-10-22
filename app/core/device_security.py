@@ -17,6 +17,7 @@ class DeviceSecurity:
         self.quota = WindowQuota(max_keys=64)
         prefix = settings.api_v1_prefix + "/stealth-cloud"
         self.ai_paths = {
+            prefix + "/quick-start",
             prefix + "/intake",
             prefix + "/matches/semantic",
             prefix + "/matches/discover",

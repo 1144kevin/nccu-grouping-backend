@@ -7,6 +7,8 @@ from pydantic import Field, field_validator
 from app.core.config import get_settings
 from app.core_cloud.discovery import discover
 from app.core_cloud.intake import IntakeRequest, IntakeResult
+from app.core_cloud.quick_stealth import QuickResult, QuickStart
+from app.core_cloud.quick_stealth import start as quick_start
 from app.core_cloud.semantic import SemanticCloudMatches, SemanticRequest, semantic_cloud_matches
 from app.core_cloud.stealth import (
     CloudAgent,
@@ -45,6 +47,83 @@ def cloud(store: StoreDep, _: UserDep, response: Response) -> CloudStealth:
 
 
 Cloud = Annotated[CloudStealth, Depends(cloud)]
+
+
+@router.get("/quick-status")
+def quick_status(service: Cloud):
+    try:
+        service.store._request(
+            "POST",
+            "/rest/v1/rpc/core_stealth_quick",
+            body={
+                "action": "lookup",
+                "args": {"request_key": "00000000-0000-0000-0000-000000000000"},
+            },
+            token=service.store.token,
+        )
+    except HTTPException as error:
+        if error.status_code != 503:
+            raise
+        return {"ready": False}
+    return {"ready": True}
+
+
+@router.post("/quick-start", response_model=QuickResult)
+def start_quick(
+    value: QuickStart,
+    service: Cloud,
+    key: Annotated[str, Header(alias="Idempotency-Key", min_length=12, max_length=100)],
+):
+    settings = get_settings()
+    interpreter = None
+    if settings.environment == "local" and settings.stealth_ai_provider == "ollama_local":
+        interpreter = OllamaIntentInterpreter(
+            OllamaDraftProvider(
+                settings.stealth_ollama_model,
+                local_only_confirmed=settings.stealth_ollama_local_only_confirmed,
+            )
+        )
+    return quick_start(service, value, key, interpreter=interpreter)
+
+
+class CoordinationMessage(StrictModel):
+    content: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("content")
+    @classmethod
+    def valid_text(cls, value):
+        if not value.strip() or "\0" in value:
+            raise ValueError("invalid message")
+        value.encode("utf-8")
+        return value.strip()
+
+
+def room_rpc(service, action, args):
+    return service.store._request(
+        "POST",
+        "/rest/v1/rpc/core_stealth_quick",
+        body={"action": action, "args": args},
+        token=service.store.token,
+    )
+
+
+@router.get("/matches/{proposal_id}/room")
+def coordination_room(proposal_id: UUID, service: Cloud):
+    return room_rpc(service, "state", {"proposal_id": str(proposal_id)})
+
+
+@router.post("/matches/{proposal_id}/room", status_code=201)
+def coordination_send(
+    proposal_id: UUID,
+    value: CoordinationMessage,
+    service: Cloud,
+    key: Annotated[UUID, Header(alias="Idempotency-Key")],
+):
+    return room_rpc(
+        service,
+        "send",
+        {"proposal_id": str(proposal_id), "request_key": str(key), "content": value.content},
+    )
 
 
 class IntentDecision(StrictModel):
