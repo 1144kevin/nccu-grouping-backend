@@ -61,6 +61,6 @@ npm run dev:account
 - 後端認證、裝置、OAuth 與雲端邊界 118 項回歸通過；前端完整202項通過，新增密碼重試及 OAuth 選定測試7項通過。TypeScript與變更檔 lint 通過。
 - 全新臨時瀏覽器、攔截 Auth 的隔離畫面驗證通過：設定密碼僅送出一次、清空輸入、驗證頁成功／失敗結果、清除 URL fragment、不使用 local/session storage。找到同頁新 fragment 未更新結果的問題並修復。真實 Auth 寫入0次。
 - 本機 HTTP 健康檢查、驗證頁及電腦 Web 登入頁回200；手機 TLS 與健康檢查已由本人先前回報連通。
-- 本人已確認儲存回跳設定；尚待本人 Google 登入與設定自己的密碼，再用 iPhone 登入。測試程式不替本人登入或設定真實密碼，也沒有發送新的驗證信。
+- 本人已確認儲存回跳設定、設定 App 密碼，並以同帳號成功登入 iPhone Expo Go。新信箱驗證信的實機回跳尚未另外回報驗收；測試程式沒有替本人設定真實密碼或發送新驗證信。登入後依 [完整實機驗收](IPHONE_FULL_FLOW_TEST.md) 測鍵盤與各功能。
 
 依據：[Supabase Redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls)、[OAuth 帳號加入密碼](https://supabase.com/docs/guides/auth/auth-identity-linking)、[更新已登入使用者](https://supabase.com/docs/reference/javascript/auth-updateuser)。
