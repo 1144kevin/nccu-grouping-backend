@@ -96,6 +96,7 @@ class CloudMatch(BaseModel):
     my_terms_accepted: bool = False
     formed_post_id: UUID | None = None
     formed_at: AwareDatetime | None = None
+    coordination_opened: bool = False
     planning_members: list[PlanningMember] = Field(default_factory=list, exclude=True)
     agent_draft: AgentTermsDraft | None = None
 
