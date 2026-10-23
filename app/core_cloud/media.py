@@ -54,6 +54,8 @@ class ImageURL(BaseModel):
 
 
 class MediaService:
+    bucket = BUCKET
+
     def __init__(self, store: SupabaseCoreStore, owner_id: UUID, *, transport=None):
         settings = get_settings()
         key = settings.core_media_signing_key.get_secret_value()
@@ -106,7 +108,7 @@ class MediaService:
         try:
             with self._client() as client:
                 result = client.post(
-                    f"/storage/v1/object/{BUCKET}/{path}",
+                    f"/storage/v1/object/{self.bucket}/{path}",
                     content=content,
                     headers={
                         "Content-Type": "image/jpeg",
@@ -137,7 +139,7 @@ class MediaService:
                 self._client() as client,
                 client.stream(
                     "GET",
-                    f"/storage/v1/object/authenticated/{BUCKET}/{path}",
+                    f"/storage/v1/object/authenticated/{self.bucket}/{path}",
                     headers={"Accept-Encoding": "identity"},
                 ) as response,
             ):
@@ -196,7 +198,9 @@ class MediaService:
     def url(self, image_id: UUID) -> ImageURL:
         asset = self.rpc("read", {"image_id": str(image_id)})
         result = self._storage_json(
-            "POST", f"/storage/v1/object/sign/{BUCKET}/{asset['object_path']}", {"expiresIn": 60}
+            "POST",
+            f"/storage/v1/object/sign/{self.bucket}/{asset['object_path']}",
+            {"expiresIn": 60},
         )
         signed = result.get("signedURL") if isinstance(result, dict) else None
         if not isinstance(signed, str):
@@ -210,7 +214,7 @@ class MediaService:
             or parsed.username
             or parsed.password
             or parsed.fragment
-            or parsed.path != f"/storage/v1/object/sign/{BUCKET}/{asset['object_path']}"
+            or parsed.path != f"/storage/v1/object/sign/{self.bucket}/{asset['object_path']}"
             or len(query.get("token", [])) != 1
             or len(query["token"][0]) > 4096
         ):
@@ -223,6 +227,6 @@ class MediaService:
     def delete(self, image_id: UUID):
         asset = self.rpc("delete_prepare", {"image_id": str(image_id)})
         self._storage_json(
-            "DELETE", f"/storage/v1/object/{BUCKET}", {"prefixes": [asset["object_path"]]}
+            "DELETE", f"/storage/v1/object/{self.bucket}", {"prefixes": [asset["object_path"]]}
         )
         return self.rpc("delete_finish", {"image_id": str(image_id)})

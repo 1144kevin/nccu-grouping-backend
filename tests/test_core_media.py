@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from app.api.routes import uploads
+from app.api.routes.chat_photos import ChatMediaService
 from app.core.config import get_settings
 from app.core_cloud.images import normalize_image
 from app.core_cloud.media import AssetView, MediaService
@@ -94,6 +95,38 @@ def test_normalized_storage_upload_is_verified_before_server_attestation(configu
         == hmac.new(bytes.fromhex("ab" * 32), message, hashlib.sha256).hexdigest()
     )
     assert len(requests) == 2 and stored == image.content
+
+
+def test_chat_photos_use_an_opaque_private_object_path_and_chat_rpc(configured):
+    store, owner = configured
+    image = normalize_image(png())
+    image_id, object_id = uuid4(), uuid4()
+    path = f"{image_id}.jpg"
+    requests = []
+
+    def handle(request):
+        requests.append(request)
+        assert str(owner) not in str(request.url)
+        assert "/core-chat-images/" in request.url.path
+        return (
+            httpx.Response(200, json={"Key": path})
+            if request.method == "POST"
+            else httpx.Response(200, content=image.content)
+        )
+
+    asset = {"id": str(image_id), "object_path": path, "width": 12, "height": 8, "state": "pending"}
+    store._request.side_effect = [
+        asset,
+        {**asset, "storage_id": str(object_id)},
+        {**asset, "state": "ready"},
+    ]
+    result = ChatMediaService(store, owner, transport=httpx.MockTransport(handle)).upload(
+        image, "photo-upload-retry-key"
+    )
+    assert result.state == "ready" and len(requests) == 2
+    assert all(
+        call.args[1] == "/rest/v1/rpc/core_chat_media" for call in store._request.call_args_list
+    )
 
 
 def test_wrong_existing_bytes_cannot_be_attested_even_after_duplicate_upload(configured):

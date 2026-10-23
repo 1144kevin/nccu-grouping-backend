@@ -1,3 +1,4 @@
+import json
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -76,6 +77,25 @@ def test_account_without_images_does_not_require_a_storage_or_admin_key():
     store, actor = configured(lambda _: [])
     assert AccountDeletion(store, actor).delete(DeletionConfirm(confirmation="DELETE")).deleted
     assert store._request.call_count == 3
+
+
+def test_cleanup_deletes_opaque_chat_photos_from_their_own_bucket():
+    photo = uuid4()
+    store, actor = configured(lambda _: [{"path": f"{photo}.jpg", "bucket": "core-chat-images"}])
+    requests = []
+
+    def handle(request):
+        requests.append(request)
+        assert request.url.path == "/storage/v1/object/core-chat-images"
+        assert json.loads(request.content) == {"prefixes": [f"{photo}.jpg"]}
+        return httpx.Response(200, json=[])
+
+    assert (
+        AccountDeletion(store, actor, transport=httpx.MockTransport(handle))
+        .delete(DeletionConfirm(confirmation="DELETE"))
+        .deleted
+    )
+    assert len(requests) == 1
 
 
 @pytest.mark.parametrize("value", [True, 1, "delete", "", None])

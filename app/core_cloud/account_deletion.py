@@ -64,26 +64,27 @@ class AccountDeletion:
         if (
             not isinstance(assets, dict)
             or not isinstance(assets.get("items"), list)
-            or len(assets["items"]) > 20
+            or len(assets["items"]) > 40
         ):
             raise HTTPException(503, "account_deletion_cleanup_failed")
-        paths = []
+        buckets: dict[str, list[str]] = {}
         for item in assets["items"]:
             path = item.get("path") if isinstance(item, dict) else None
-            if (
-                not isinstance(path, str)
-                or not path.startswith(f"{self.actor}/")
-                or not path.endswith(".jpg")
-            ):
+            bucket = item.get("bucket", "core-post-images") if isinstance(item, dict) else None
+            if bucket not in ("core-post-images", "core-chat-images") or not isinstance(path, str):
                 raise HTTPException(503, "account_deletion_cleanup_failed")
+            prefix = f"{self.actor}/" if bucket == "core-post-images" else ""
             try:
-                image_id = UUID(path[len(str(self.actor)) + 1 : -4])
+                image_id = UUID(path[len(prefix) : -4])
             except ValueError:
                 raise HTTPException(503, "account_deletion_cleanup_failed") from None
-            if path != f"{self.actor}/{image_id}.jpg":
+            if path != f"{prefix}{image_id}.jpg":
                 raise HTTPException(503, "account_deletion_cleanup_failed")
+            paths = buckets.setdefault(bucket, [])
             paths.append(path)
-        if paths:
+            if len(paths) > 20:
+                raise HTTPException(503, "account_deletion_cleanup_failed")
+        for bucket, paths in buckets.items():
             try:
                 with httpx.Client(
                     base_url=PROJECT_URL,
@@ -94,7 +95,7 @@ class AccountDeletion:
                 ) as client:
                     result = client.request(
                         "DELETE",
-                        "/storage/v1/object/core-post-images",
+                        f"/storage/v1/object/{bucket}",
                         headers={
                             "apikey": self.store.key,
                             "Authorization": f"Bearer {self.store.token}",

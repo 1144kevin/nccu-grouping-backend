@@ -4,6 +4,7 @@ from app.api.routes import (
     account_deletion,
     ai,
     auth,
+    chat_photos,
     conversations,
     demo,
     development,
@@ -37,6 +38,7 @@ api_router.include_router(join_requests.router)
 api_router.include_router(conversations.router)
 api_router.include_router(notifications.router)
 api_router.include_router(uploads.router)
+api_router.include_router(chat_photos.router)
 api_router.include_router(ai.router)
 api_router.include_router(recommendations.router)
 api_router.include_router(reports.router)

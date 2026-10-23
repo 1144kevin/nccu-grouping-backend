@@ -110,6 +110,7 @@ class MessageInput(Input):
 
 
 class MessageView(BaseModel):
+    image_id: UUID | None = None
     id: UUID
     post_id: UUID
     sender_id: UUID
