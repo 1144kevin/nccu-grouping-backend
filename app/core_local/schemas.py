@@ -223,6 +223,8 @@ class JoinView(BaseModel):
     post_id: UUID
     requester_id: UUID
     requester_name: str
+    requester_badge: str | None = None
+    requester_level: int | None = Field(default=None, ge=1, le=5)
     status: Literal["pending", "accepted", "rejected", "cancelled"]
     created_at: datetime
     decided_at: datetime | None

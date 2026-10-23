@@ -15,6 +15,7 @@ from app.api.routes import (
     recommendations,
     reports,
     search,
+    social,
     stealth,
     stealth_cloud,
     uploads,
@@ -41,5 +42,6 @@ api_router.include_router(recommendations.router)
 api_router.include_router(reports.router)
 api_router.include_router(moderation.router)
 api_router.include_router(search.router)
+api_router.include_router(social.router)
 api_router.include_router(stealth.router)
 api_router.include_router(stealth_cloud.router)
