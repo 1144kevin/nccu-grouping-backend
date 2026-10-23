@@ -115,6 +115,7 @@ class MessageView(BaseModel):
     sender_id: UUID
     sender_name: str
     sender_badge: str
+    sender_level: int = Field(default=1, ge=1, le=5)
     content: str
     created_at: datetime
 
@@ -165,6 +166,7 @@ class PostView(BaseModel):
     author_id: UUID
     author_name: str
     author_badge: str = "🍱"
+    author_level: int = Field(default=1, ge=1, le=5)
     content: str
     tags: list[str]
     location: Location
@@ -281,6 +283,7 @@ class PublicProfileView(BaseModel):
     badge: str
     created_at: datetime
     active_posts: int = Field(ge=0)
+    level: int = Field(default=1, ge=1, le=5)
 
 
 class ServerClockView(BaseModel):
@@ -288,6 +291,8 @@ class ServerClockView(BaseModel):
 
 
 class OrderActivityView(BaseModel):
+    requester_level: int = Field(default=1, ge=1, le=5)
+    requester_badge: str = "🍱"
     id: UUID
     post_id: UUID
     post_content: str

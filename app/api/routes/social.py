@@ -26,6 +26,7 @@ class Thread(BaseModel):
     peer_id: UUID
     peer_name: str
     peer_badge: str
+    peer_level: int = Field(default=1, ge=1, le=5)
     last_message: dict | None = None
     updated_at: str
     unread_count: int = Field(ge=0)
