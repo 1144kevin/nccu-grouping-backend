@@ -1,7 +1,7 @@
 from typing import Annotated, Literal
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from pydantic import Field, field_validator
 
 from app.core.config import get_settings
@@ -72,6 +72,8 @@ def quick_status(service: Cloud):
 def start_quick(
     value: QuickStart,
     service: Cloud,
+    request: Request,
+    user: UserDep,
     key: Annotated[str, Header(alias="Idempotency-Key", min_length=12, max_length=100)],
 ):
     settings = get_settings()
@@ -83,7 +85,11 @@ def start_quick(
                 local_only_confirmed=settings.stealth_ollama_local_only_confirmed,
             )
         )
-    return quick_start(service, value, key, interpreter=interpreter)
+    result = quick_start(service, value, key, interpreter=interpreter)
+    watch = getattr(request.app.state, "stealth_watch", None)
+    if watch is not None:
+        watch.subscribe(str(user.id), service)
+    return result
 
 
 class CoordinationMessage(StrictModel):
@@ -146,8 +152,15 @@ def agent(service: Cloud):
 
 
 @router.put("/agent", response_model=CloudAgent)
-def save_agent(value: CloudAgentInput, service: Cloud):
-    return service.save_agent(value)
+def save_agent(value: CloudAgentInput, service: Cloud, request: Request, user: UserDep):
+    result = service.save_agent(value)
+    watch = getattr(request.app.state, "stealth_watch", None)
+    if watch is not None:
+        if result.enabled:
+            watch.subscribe(str(user.id), service)
+        else:
+            watch.unsubscribe(str(user.id))
+    return result
 
 
 @router.post("/draft", response_model=DraftOutput)
@@ -181,8 +194,12 @@ def create_signal(
 
 
 @router.get("/signals", response_model=CloudSignals)
-def signals(service: Cloud):
-    return service.signals()
+def signals(service: Cloud, request: Request, user: UserDep):
+    result = service.signals()
+    watch = getattr(request.app.state, "stealth_watch", None)
+    if watch is not None and any(s.status == "active" for s in result.items):
+        watch.subscribe(str(user.id), service)
+    return result
 
 
 @router.delete("/signals/{signal_id}", response_model=Signal)

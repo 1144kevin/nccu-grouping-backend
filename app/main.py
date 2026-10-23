@@ -1,5 +1,6 @@
+import asyncio
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
@@ -20,7 +21,16 @@ from app.stealth.service import StealthError
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     configure_logging(getattr(application.state, "cloud_settings", None))
-    yield
+    task = None
+    if application.state.stealth_watch is not None:
+        task = asyncio.create_task(application.state.stealth_watch.run())
+    try:
+        yield
+    finally:
+        if task is not None:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
 
 
 async def validation_error_handler(_, exc: RequestValidationError) -> JSONResponse:
@@ -49,6 +59,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         docs_url=None if cloud else "/docs",
         redoc_url=None if cloud else "/redoc",
         openapi_url=None if cloud else "/openapi.json",
+    )
+    from app.core_cloud.stealth_watch import StealthWatch
+
+    application.state.stealth_watch = (
+        StealthWatch()
+        if settings.core_supabase_enabled and settings.environment == "local"
+        else None
     )
     application.add_middleware(
         CORSMiddleware,
