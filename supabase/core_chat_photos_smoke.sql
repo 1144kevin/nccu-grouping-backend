@@ -62,6 +62,8 @@ insert into storage.objects(id,bucket_id,name,owner_id,metadata)
 select object_id,'core-chat-images',image_id::text||'.jpg',a.uid::text,'{"mimetype":"image/jpeg","size":128}' from photo_fixture,quick_fixture a where a.n=1;
 update photo_fixture f set proof=encode(extensions.hmac(convert_to(f.image_id::text||':'||a.uid::text||':'||repeat('a',64)||':'||f.object_id::text,'UTF8'),k.secret,'sha256'),'hex')
 from quick_fixture a,core_private.media_signing_keys k where a.n=1 and k.version=1;
+-- An already accepted/opened stealth room can send new photos after invitation expiry.
+update public.core_stealth_proposals set payload=jsonb_set(payload,'{expires_at}',to_jsonb(now()-interval '1 minute')) where id=(select proposal_id from quick_fixture where n=1);
 grant select on photo_fixture to authenticated;
 set local role authenticated;
 do $$ declare a record; b record; outsider record; f record; v jsonb; again jsonb; begin

@@ -58,10 +58,21 @@ declare f record; v jsonb; begin
  select * into f from quick_fixture where n=1;
  perform set_config('request.jwt.claims',jsonb_build_object('sub',f.uid,'session_id',f.sid,'role','authenticated')::text,true);
  v:=public.core_stealth_quick('state',jsonb_build_object('proposal_id',f.proposal_id));
- assert v->>'opened'='true' and v->>'can_send'='false','expired room stays readonly';
+ assert v->>'opened'='true' and v->>'can_send'='true','opened accepted room survives invitation expiry';
  assert exists(select 1 from jsonb_array_elements(public.core_stealth('matches')->'items') q(value) where q.value->>'coordination_opened'='true'),'opened room remains discoverable';
+ perform public.core_stealth_quick('send',jsonb_build_object('proposal_id',f.proposal_id,'content','Continue after invitation expiry','request_key',gen_random_uuid()));
 end $test$;
 reset role;
+update public.core_stealth_signals set status='revoked' where id=(select signal_id from quick_fixture where n=1);
+set local role authenticated;
+do $$ declare f record; begin
+ select * into f from quick_fixture where n=1;
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',f.uid,'session_id',f.sid,'role','authenticated')::text,true);
+ assert public.core_stealth_quick('state',jsonb_build_object('proposal_id',f.proposal_id))->>'can_send'='false','revoked demand still stops an expired opened room';
+ begin perform public.core_stealth_quick('send',jsonb_build_object('proposal_id',f.proposal_id,'content','must not send','request_key',gen_random_uuid())); raise exception 'revocation ignored'; exception when sqlstate 'PT409' then null; end;
+end $$;
+reset role;
+update public.core_stealth_signals set status='active' where id=(select signal_id from quick_fixture where n=1);
 insert into public.core_user_blocks(owner_id,blocked_id) select a.uid,b.uid from quick_fixture a,quick_fixture b where a.n=1 and b.n=2;
 set local role authenticated;
 do $test$
