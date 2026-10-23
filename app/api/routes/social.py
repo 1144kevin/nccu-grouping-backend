@@ -21,8 +21,10 @@ def social(store, action, args):
 
 class Thread(BaseModel):
     id: UUID
-    kind: Literal["group", "direct"]
-    post: PostView
+    kind: Literal["group", "direct", "stealth"]
+    post: PostView | None = None
+    title: str | None = None
+    preview: str | None = None
     peer_id: UUID
     peer_name: str
     peer_badge: str
@@ -61,7 +63,7 @@ class ReadDirect(Input):
 def inbox(
     store: StoreDep,
     _: UserDep,
-    kind: Literal["all", "group", "direct"] = "all",
+    kind: Literal["all", "primary", "group", "direct"] = "all",
     limit: Annotated[int, Query(ge=1, le=50)] = 30,
     cursor: Annotated[str | None, Query(max_length=1000)] = None,
     deleted: bool = False,
@@ -73,7 +75,7 @@ def inbox(
 
 @router.patch("/inbox/{kind}/{thread_id}", response_model=Thread)
 def preference(
-    kind: Literal["group", "direct"],
+    kind: Literal["group", "direct", "stealth"],
     thread_id: UUID,
     value: ThreadPreference,
     store: StoreDep,

@@ -76,6 +76,53 @@ def test_preferences_use_current_session_and_version(client):
     assert store._request.call_args.kwargs["body"]["action"] == "preferences_put"
 
 
+def test_primary_inbox_includes_anonymous_stealth_threads_and_persists_preferences(client):
+    api, store = client
+    thread = {
+        "id": str(uuid4()),
+        "kind": "stealth",
+        "post": None,
+        "title": "一起喝奶茶",
+        "preview": "等待夥伴回覆",
+        "peer_id": str(store.authenticate.return_value.id),
+        "peer_name": "偷揪夥伴",
+        "peer_badge": "🧋",
+        "peer_level": 1,
+        "last_message": None,
+        "updated_at": datetime.now(UTC).isoformat(),
+        "unread_count": 0,
+        "pinned": False,
+        "inbox": "primary",
+        "muted": False,
+        "deleted": False,
+    }
+    store._request.return_value = {"items": [thread], "next_cursor": None, "total_unread": 0}
+    response = api.get("/api/v1/inbox?kind=primary", headers=HEADERS)
+    assert response.status_code == 200 and response.json()["items"][0]["post"] is None
+    assert store._request.call_args.kwargs["body"]["args"]["kind"] == "primary"
+    assert store._request.call_args.kwargs["token"] == "synthetic-session"
+    store._request.return_value = thread
+    response = api.patch(
+        f"/api/v1/inbox/stealth/{thread['id']}", headers=HEADERS, json={"pinned": True}
+    )
+    assert response.status_code == 200
+    assert store._request.call_args.kwargs["body"]["args"] == {
+        "kind": "stealth",
+        "thread_id": thread["id"],
+        "pinned": True,
+    }
+    store._request.reset_mock()
+    assert (
+        api.patch(
+            f"/api/v1/inbox/stealth/{thread['id']}",
+            headers=HEADERS,
+            json={"owner_id": str(uuid4()), "deleted": True},
+        ).status_code
+        == 422
+    )
+    store._request.assert_not_called()
+
+
 @pytest.mark.parametrize(
     "patch",
     [
