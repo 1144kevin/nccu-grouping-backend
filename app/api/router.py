@@ -12,6 +12,7 @@ from app.api.routes import (
     join_requests,
     moderation,
     notifications,
+    post_sharing,
     posts,
     recommendations,
     reports,
@@ -34,6 +35,7 @@ api_router.include_router(demo.router)
 api_router.include_router(demo.clock_router)
 api_router.include_router(users.router)
 api_router.include_router(posts.router)
+api_router.include_router(post_sharing.router)
 api_router.include_router(join_requests.router)
 api_router.include_router(conversations.router)
 api_router.include_router(notifications.router)
