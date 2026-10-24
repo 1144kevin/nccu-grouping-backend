@@ -65,7 +65,8 @@ async def test_device_ai_boundary_rejects_before_inference(path):
             await c.post(
                 path,
                 headers={"Authorization": "Bearer fake"},
-                content=b"x" * ((6 * 1024 * 1024 if path.endswith("/post-writing") else 32768) + 1),
+                content=b"x"
+                * ((30 * 1024 * 1024 if path.endswith("/post-writing") else 32768) + 1),
             )
         ).status_code == 413
         assert (await c.post(path, headers={"X-Forwarded-For": "127.0.0.1"})).status_code == 403

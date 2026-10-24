@@ -4,11 +4,11 @@
 
 ## 圖片辨識生成文案
 
-先在發布頁加入照片，再按「圖片辨識生成文案」，不用先輸入文字。保留完整照片，不再強制裁成 4:3，以免切掉傳單限制條件。
+先在發布頁加入 1～5 張照片，再按「圖片辨識生成文案」，不用先輸入文字。發布頁的小方框採填滿縮圖；送給模型與發布後的照片保留完整內容，不裁切原圖。
 
-App 將已選照片的 base64 傳給既有 `POST /api/v1/ai/post-writing`，`mode=image`。後端限制原圖 4 MiB／1600 萬像素，驗證 JPEG／PNG、修正方向、移除 EXIF，再交給已安裝的本機 Ollama 視覺模型摘錄資訊。透過 `/api/show` 確認模型具備 vision 能力，純文字模型明確拒絕。
+App 將整組照片的 `images_base64` 陣列傳給既有 `POST /api/v1/ai/post-writing`，`mode=image`；原單張 `image_base64` 仍相容，兩種欄位不能同時提供。後端限制每張原圖 4 MiB／1600 萬像素，驗證 JPEG／PNG、修正方向、移除 EXIF，再交給已安裝的本機 Ollama 視覺模型一起理解。支援宣傳單、食物、物品與品牌照片，沒有文字也能描述可見內容；不同商品的優惠不能混用。透過 `/api/show` 確認模型具備 vision 能力，純文字模型明確拒絕。
 
-第二次模型呼叫只使用辨識文字、本人補充與表單內容生成文案；回傳 `text` 和 `source_text`，預覽顯示辨識資訊供本人核對。照片不因辨識而新增 Storage 物件，原發布照片流程保持不變。無法看清時回報錯誤，不產生假優惠。
+後續模型呼叫只使用辨識文字、本人補充與表單內容生成文案。檢查失敗時自動修正一次；若圖片資訊已成功辨識且連同補充不超過 350 字，但兩次文案均未通過檢查，改用辨識原文加上保守邀請句，不採用失敗文案。回傳 `text`、`source_text`、`draft_method=model|recognized_facts`，預覽標示來源並供本人核對。照片不因辨識而新增 Storage 物件。無法辨識任何內容時回報錯誤，不產生假優惠。
 
 ## 語音潤稿
 
@@ -26,7 +26,7 @@ Web 使用 SpeechRecognition／webkitSpeechRecognition，依瀏覽器與系統�
 
 ## 執行與驗證
 
-沿用本機 AI 設定：`STEALTH_AI_PROVIDER=ollama_local`、`STEALTH_OLLAMA_MODEL=qwen3.5:4b`、`STEALTH_OLLAMA_LOCAL_ONLY_CONFIRMED=true`。裝置模式還需要原本的 `DEVICE_AI_ENABLED` 授權設定；正式 cloud runner 不會自動啟用這個本機端點。既有每使用者每分鐘 6 次限制保留，裝置入口只對此照片端點放寬至 6 MiB JSON，其他 AI 路徑仍為 32 KiB。
+沿用本機 AI 設定：`STEALTH_AI_PROVIDER=ollama_local`、`STEALTH_OLLAMA_MODEL=qwen3.5:4b`、`STEALTH_OLLAMA_LOCAL_ONLY_CONFIRMED=true`。裝置模式還需要原本的 `DEVICE_AI_ENABLED` 授權設定；正式 cloud runner 不會自動啟用這個本機端點。既有每使用者每分鐘 6 次限制保留，裝置入口只對此照片端點放寬至 30 MiB JSON、90 秒上傳時間，其他 AI 路徑仍為 32 KiB／10 秒。整組視覺推論上限 120 秒，每次文案推論 60 秒；App 圖片請求總逾時 420 秒，語音潤稿 150 秒。
 
 API、Web 程式碼需要由開發程序載入新版；iPhone 必須在 Mac 重新建置含 `PostSpeechModule` 的正常 App，只有 JS 更新或 Expo Go 無法新增原生模組。Windows 尚未完成 Swift 編譯與實際麥克風／雙裝置驗收。
 

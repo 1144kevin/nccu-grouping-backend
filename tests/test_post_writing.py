@@ -155,3 +155,51 @@ def test_generated_text_must_not_change_a_per_item_price_to_per_slice():
 def test_mode_requires_the_correct_input(value):
     with pytest.raises(ValidationError):
         WritingInput(**value)
+
+
+def test_multi_photo_recognition_needs_no_typed_text_and_sends_the_entire_album():
+    calls = []
+    observed = "照片一是披薩優惠，照片二是飲料，照片三是品牌標誌。"
+
+    def extract(messages, schema, prompt):
+        calls.append(messages)
+        return json.dumps({"text": observed if len(calls) == 1 else LONG_TEXT.replace(" 5 ", "幾")})
+
+    result = draft_post(
+        WritingInput(mode="image", images_base64=[picture()] * 3), SimpleNamespace(extract=extract)
+    )
+    assert len(calls[0][0]["images"]) == 3
+    assert result.source_text == observed
+    assert "images_base64" not in calls[1][0]["content"]
+
+
+def test_invalid_writer_is_repaired_once_and_keeps_the_recognized_facts_on_failure():
+    calls = []
+    facts = "杯子品牌標誌，沒有價格或優惠。"
+
+    def extract(messages, schema, prompt):
+        calls.append(prompt)
+        return json.dumps({"text": facts if len(calls) == 1 else "每人99元！"})
+
+    result = draft_post(
+        WritingInput(mode="image", images_base64=[picture()]), SimpleNamespace(extract=extract)
+    )
+    assert len(calls) == 3
+    assert result.draft_method == "recognized_facts"
+    assert facts in result.text and "99" not in result.text
+    assert len(result.text) >= 50
+
+
+def test_repaired_writer_can_recover_without_using_the_facts_template():
+    replies = iter(["太短", LONG_TEXT])
+    result = write_post(
+        WritingInput(mode="generate", content=LONG_TEXT),
+        SimpleNamespace(extract=lambda *_: json.dumps({"text": next(replies)})),
+    )
+    assert result == LONG_TEXT
+
+
+@pytest.mark.parametrize("images", [[], [picture()] * 6, ["x" * 5_592_409]])
+def test_album_is_bounded_before_inference(images):
+    with pytest.raises(ValidationError):
+        WritingInput(mode="image", images_base64=images)

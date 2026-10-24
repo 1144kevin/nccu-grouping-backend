@@ -85,13 +85,13 @@ class DeviceSecurity:
         except ValueError:
             length = -1
         # A selected photo is bounded base64; other AI routes remain text-only.
-        limit = 6 * 1024 * 1024 if scope["path"].endswith("/ai/post-writing") else 32_768
+        limit = 30 * 1024 * 1024 if scope["path"].endswith("/ai/post-writing") else 32_768
         if length < 0 or length > limit:
             await deny(413, "request_body_too_large")
             return
         body = bytearray()
         try:
-            async with asyncio.timeout(10):
+            async with asyncio.timeout(90 if scope["path"].endswith("/ai/post-writing") else 10):
                 while True:
                     message = await receive()
                     if message["type"] == "http.disconnect":
