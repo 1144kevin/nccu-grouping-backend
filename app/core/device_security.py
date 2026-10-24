@@ -64,7 +64,10 @@ class DeviceSecurity:
         if not self.quota.allow(("all", peer), 240):
             await deny(429, "too_many_requests")
             return
-        if scope["path"] not in self.ai_paths:
+        dynamic_reply = scope["path"].startswith(
+            self.settings.api_v1_prefix + "/stealth-cloud/matches/"
+        ) and scope["path"].endswith("/reply-suggestions")
+        if scope["path"] not in self.ai_paths and not dynamic_reply:
             await self.app(scope, receive, send)
             return
         if not self.settings.core_device_ai_enabled:

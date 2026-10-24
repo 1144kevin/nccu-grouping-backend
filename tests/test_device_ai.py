@@ -42,6 +42,7 @@ def test_device_ai_opt_in_is_explicit_and_never_inherited():
     [
         "/api/v1/stealth-cloud/quick-start",
         "/api/v1/stealth-cloud/quick-interview",
+        "/api/v1/stealth-cloud/matches/00000000-0000-0000-0000-000000000001/reply-suggestions",
         "/api/v1/stealth-cloud/intake",
         "/api/v1/stealth-cloud/matches/semantic",
         "/api/v1/stealth-cloud/matches/discover",

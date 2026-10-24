@@ -4,12 +4,20 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from pydantic import Field, field_validator
 
+from app.core.cloud_security import WindowQuota
 from app.core.config import get_settings
 from app.core_cloud.discovery import discover
 from app.core_cloud.intake import IntakeRequest, IntakeResult
 from app.core_cloud.quick_stealth import QuickInterview, QuickResult, QuickStart
 from app.core_cloud.quick_stealth import interview as quick_interview
 from app.core_cloud.quick_stealth import start as quick_start
+from app.core_cloud.reply_suggestions import (
+    ReplyRequest,
+    ReplyResult,
+    context_key,
+    snapshot,
+    suggest,
+)
 from app.core_cloud.semantic import SemanticCloudMatches, SemanticRequest, semantic_cloud_matches
 from app.core_cloud.stealth import (
     CloudAgent,
@@ -138,6 +146,45 @@ def room_rpc(service, action, args):
 @router.get("/matches/{proposal_id}/room")
 def coordination_room(proposal_id: UUID, service: Cloud):
     return room_rpc(service, "state", {"proposal_id": str(proposal_id)})
+
+
+reply_quota = WindowQuota(max_keys=1024)
+
+
+def reply_context(service, proposal_id):
+    room = room_rpc(service, "state", {"proposal_id": str(proposal_id)})
+    if not room.get("opened") or not room.get("can_send"):
+        raise HTTPException(409, "stealth_room_read_only")
+    match = next((m for m in service.matches().items if m.id == proposal_id), None)
+    if match is None or match.status == "unavailable":
+        raise HTTPException(404, "stealth_match_unavailable")
+    return snapshot(match, room)
+
+
+@router.post("/matches/{proposal_id}/reply-suggestions", response_model=ReplyResult)
+def reply_suggestions(
+    proposal_id: UUID, value: ReplyRequest, service: Cloud, request: Request, user: UserDep
+):
+    context = reply_context(service, proposal_id)
+    if not reply_quota.allow(("stealth-reply", str(user.id)), 12):
+        raise HTTPException(429, "stealth_reply_rate_limit")
+    settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    provider = None
+    if (
+        settings.environment == "local"
+        and not settings.core_cloud_enabled
+        and settings.stealth_ai_provider == "ollama_local"
+        and settings.stealth_ollama_local_only_confirmed
+    ):
+        try:
+            provider = OllamaDraftProvider(settings.stealth_ollama_model, local_only_confirmed=True)
+        except LocalModelError:
+            pass
+    result = suggest(context, value.batch, provider, value.previous)
+    # Recheck access and snapshot after potentially slow model inference.
+    if context_key(reply_context(service, proposal_id)) != result.context_key:
+        raise HTTPException(409, "stealth_reply_context_changed")
+    return result
 
 
 @router.post("/matches/{proposal_id}/room", status_code=201)

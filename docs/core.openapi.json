@@ -3620,6 +3620,64 @@
           }
         ]
       }
+    },
+    "/api/v1/stealth-cloud/matches/{proposal_id}/reply-suggestions": {
+      "post": {
+        "tags": [
+          "stealth-supabase"
+        ],
+        "summary": "Reply Suggestions",
+        "operationId": "reply_suggestions_api_v1_stealth_cloud_matches__proposal_id__reply_suggestions_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Proposal Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplyResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -8139,6 +8197,57 @@
           "interpretation"
         ],
         "title": "QuickInterview"
+      },
+      "ReplyRequest": {
+        "properties": {
+          "batch": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Batch",
+            "default": 0
+          },
+          "previous": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Previous"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReplyRequest"
+      },
+      "ReplyResult": {
+        "properties": {
+          "suggestions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Suggestions"
+          },
+          "context_key": {
+            "type": "string",
+            "title": "Context Key"
+          },
+          "is_llm": {
+            "type": "boolean",
+            "title": "Is Llm"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "suggestions",
+          "context_key",
+          "is_llm"
+        ],
+        "title": "ReplyResult"
       }
     },
     "securitySchemes": {
