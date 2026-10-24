@@ -20,6 +20,7 @@ class DeviceSecurity:
             settings.api_v1_prefix + "/ai/post-writing",
             settings.api_v1_prefix + "/recommendations/semantic",
             prefix + "/quick-start",
+            prefix + "/quick-interview",
             prefix + "/intake",
             prefix + "/matches/semantic",
             prefix + "/matches/discover",

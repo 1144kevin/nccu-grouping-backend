@@ -7,7 +7,8 @@ from pydantic import Field, field_validator
 from app.core.config import get_settings
 from app.core_cloud.discovery import discover
 from app.core_cloud.intake import IntakeRequest, IntakeResult
-from app.core_cloud.quick_stealth import QuickResult, QuickStart
+from app.core_cloud.quick_stealth import QuickInterview, QuickResult, QuickStart
+from app.core_cloud.quick_stealth import interview as quick_interview
 from app.core_cloud.quick_stealth import start as quick_start
 from app.core_cloud.semantic import SemanticCloudMatches, SemanticRequest, semantic_cloud_matches
 from app.core_cloud.stealth import (
@@ -76,9 +77,13 @@ def start_quick(
     user: UserDep,
     key: Annotated[str, Header(alias="Idempotency-Key", min_length=12, max_length=100)],
 ):
-    settings = get_settings()
+    settings = getattr(request.state, "runtime_settings", None) or get_settings()
     interpreter = None
-    if settings.environment == "local" and settings.stealth_ai_provider == "ollama_local":
+    if (
+        value.confirmed_signal is None
+        and settings.environment == "local"
+        and settings.stealth_ai_provider == "ollama_local"
+    ):
         interpreter = OllamaIntentInterpreter(
             OllamaDraftProvider(
                 settings.stealth_ollama_model,
@@ -90,6 +95,23 @@ def start_quick(
     if watch is not None:
         watch.subscribe(str(user.id), service)
     return result
+
+
+@router.post("/quick-interview", response_model=QuickInterview)
+def interview_quick(value: IntakeRequest, service: Cloud, request: Request):
+    settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    interpreter = None
+    if settings.environment == "local" and settings.stealth_ai_provider == "ollama_local":
+        interpreter = OllamaIntentInterpreter(
+            OllamaDraftProvider(
+                settings.stealth_ollama_model,
+                local_only_confirmed=settings.stealth_ollama_local_only_confirmed,
+            )
+        )
+    try:
+        return quick_interview(service, value, interpreter=interpreter)
+    except LocalModelError as error:
+        raise HTTPException(503, str(error)) from None
 
 
 class CoordinationMessage(StrictModel):

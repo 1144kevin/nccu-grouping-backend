@@ -41,6 +41,7 @@ def test_device_ai_opt_in_is_explicit_and_never_inherited():
     "path",
     [
         "/api/v1/stealth-cloud/quick-start",
+        "/api/v1/stealth-cloud/quick-interview",
         "/api/v1/stealth-cloud/intake",
         "/api/v1/stealth-cloud/matches/semantic",
         "/api/v1/stealth-cloud/matches/discover",
@@ -89,6 +90,7 @@ async def test_device_ai_boundary_rejects_before_inference(path):
     "path",
     [
         "/api/v1/stealth-cloud/quick-start",
+        "/api/v1/stealth-cloud/quick-interview",
         "/api/v1/stealth-cloud/intake",
         "/api/v1/stealth-cloud/matches/semantic",
         "/api/v1/stealth-cloud/matches/discover",

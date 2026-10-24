@@ -3574,6 +3574,52 @@
           }
         }
       }
+    },
+    "/api/v1/stealth-cloud/quick-interview": {
+      "post": {
+        "tags": [
+          "stealth-supabase"
+        ],
+        "summary": "Interview Quick",
+        "operationId": "interview_quick_api_v1_stealth_cloud_quick_interview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntakeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuickInterview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -6780,6 +6826,7 @@
             "enum": [
               "local_model",
               "keyword_fallback",
+              "reviewed",
               "retry"
             ],
             "title": "Interpretation"
@@ -6806,6 +6853,16 @@
             "type": "boolean",
             "title": "Activate Agent",
             "default": false
+          },
+          "confirmed_signal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CloudSignalInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -8028,6 +8085,55 @@
           "status"
         ],
         "title": "DecisionInput"
+      },
+      "QuickInterview": {
+        "properties": {
+          "facts": {
+            "$ref": "#/components/schemas/IntakeFacts"
+          },
+          "signal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CloudSignalInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/IntakeQuestion"
+            },
+            "type": "array",
+            "title": "Questions"
+          },
+          "interpretation": {
+            "type": "string",
+            "enum": [
+              "local_model",
+              "keyword_fallback"
+            ],
+            "title": "Interpretation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "facts",
+          "signal",
+          "sources",
+          "questions",
+          "interpretation"
+        ],
+        "title": "QuickInterview"
       }
     },
     "securitySchemes": {
