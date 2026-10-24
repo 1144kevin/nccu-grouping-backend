@@ -77,6 +77,47 @@ def test_account_web_uses_a_separate_fixed_loopback_callback():
     assert error.value.detail == "google_account_web_local_only"
 
 
+def test_public_web_uses_only_the_operator_configured_https_callback():
+    from app.core.config import Settings
+    from app.core_cloud.google import GoogleStartInput
+
+    store = configured_store()
+    callback = "https://campus-demo.trycloudflare.com/auth/callback"
+    store.settings = Settings(_env_file=None, core_google_public_web_callback=callback)
+    assert GoogleStartInput(client="web_public").client == "web_public"
+    started = GoogleFlows().start(store, client="web_public")
+    assert parse_qs(urlsplit(started.authorize_url).query)["redirect_to"] == [callback]
+    # Public configuration does not change local/native redirects.
+    local = GoogleFlows().start(store)
+    assert parse_qs(urlsplit(local.authorize_url).query)["redirect_to"] == [CALLBACK_URL]
+    with pytest.raises(ValidationError):
+        GoogleStartInput(client="web_public", redirect_to="https://other.invalid/auth/callback")
+
+
+@pytest.mark.parametrize(
+    "callback",
+    [
+        "",
+        "http://campus-demo.trycloudflare.com/auth/callback",
+        "https://127.0.0.1/auth/callback",
+        "https://campus-demo.trycloudflare.com/other",
+        "https://campus-demo.trycloudflare.com/auth/callback?next=elsewhere",
+        "https://campus-demo.trycloudflare.com/auth/callback#fragment",
+        "https://user:password@campus-demo.trycloudflare.com/auth/callback",
+    ],
+)
+def test_public_web_rejects_missing_or_invalid_configuration_before_network(callback):
+    from app.core.config import Settings
+
+    store = configured_store()
+    store.settings = Settings(_env_file=None, core_google_public_web_callback=callback)
+    with pytest.raises(HTTPException) as error:
+        GoogleFlows().start(store, client="web_public")
+    assert error.value.status_code == 403
+    assert error.value.detail == "google_public_web_not_configured"
+    store._request.assert_not_called()
+
+
 def test_api_ios_oauth_requires_explicit_opt_in_and_rejects_redirect(monkeypatch):
     monkeypatch.setenv("CORE_SUPABASE_ENABLED", "true")
     monkeypatch.setenv("CORE_LOCAL_ENABLED", "false")

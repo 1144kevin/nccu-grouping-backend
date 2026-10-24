@@ -1,4 +1,4 @@
-"""Loopback web OAuth: short-lived, single-use PKCE proofs, never persisted or logged."""
+"""Web/native OAuth: short-lived, single-use PKCE proofs, never persisted or logged."""
 
 import base64
 import hashlib
@@ -23,7 +23,7 @@ MAX_FLOWS = 128
 
 class GoogleStartInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    client: Literal["web", "web_account", "ios"] = "web"
+    client: Literal["web", "web_account", "web_public", "ios"] = "web"
 
 
 class GoogleStartView(BaseModel):
@@ -48,7 +48,10 @@ class GoogleFlows:
         return hashlib.sha256(flow_id.encode()).hexdigest()
 
     def start(
-        self, store: SupabaseCoreStore, *, client: Literal["web", "web_account", "ios"] = "web"
+        self,
+        store: SupabaseCoreStore,
+        *,
+        client: Literal["web", "web_account", "web_public", "ios"] = "web",
     ) -> GoogleStartView:
         from app.core.config import get_settings
 
@@ -60,6 +63,14 @@ class GoogleFlows:
         )
         if client == "web" and settings.core_cloud_enabled and not callback:
             raise HTTPException(403, "google_cloud_web_not_configured")
+        if client == "web_public":
+            from app.core.cloud_runtime import https_address
+
+            callback = settings.core_google_public_web_callback
+            try:
+                https_address(callback, "/auth/callback")
+            except ValueError:
+                raise HTTPException(403, "google_public_web_not_configured") from None
         settings = store._request("GET", "/auth/v1/settings")
         providers = settings.get("external") if isinstance(settings, dict) else None
         if not isinstance(providers, dict) or providers.get("google") is not True:

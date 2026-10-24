@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     core_supabase_enabled: bool = False
     # Enable only after adding the exact native callback to the development Auth allowlist.
     core_google_ios_enabled: bool = False
+    # Exact HTTPS callback for the public web gateway; browser input cannot override it.
+    core_google_public_web_callback: str = ""
     core_email_redirect_url: str = ""
     core_media_enabled: bool = False
     core_media_signing_key: SecretStr = SecretStr("")
