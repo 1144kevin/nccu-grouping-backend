@@ -80,7 +80,9 @@ class DeviceSecurity:
             length = int(request.headers.get("content-length", "0"))
         except ValueError:
             length = -1
-        if length < 0 or length > 32_768:
+        # A selected photo is bounded base64; other AI routes remain text-only.
+        limit = 6 * 1024 * 1024 if scope["path"].endswith("/ai/post-writing") else 32_768
+        if length < 0 or length > limit:
             await deny(413, "request_body_too_large")
             return
         body = bytearray()
@@ -91,7 +93,7 @@ class DeviceSecurity:
                     if message["type"] == "http.disconnect":
                         return
                     body.extend(message.get("body", b""))
-                    if len(body) > 32_768:
+                    if len(body) > limit:
                         await deny(413, "request_body_too_large")
                         return
                     if not message.get("more_body", False):

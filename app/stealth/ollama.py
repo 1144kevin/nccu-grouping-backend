@@ -148,6 +148,10 @@ class OllamaDraftProvider:
             details = selected.get("details")
             if not isinstance(details, dict) or details.get("format") != "gguf":
                 raise LocalModelError("local_model_format_unverified")
+            if any(message.get("images") for message in messages):
+                info = self._json_request(client, "POST", "/api/show", json={"model": self.model})
+                if "vision" not in info.get("capabilities", []):
+                    raise LocalModelError("local_model_vision_unavailable")
             result = self._json_request(
                 client,
                 "POST",

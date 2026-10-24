@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 
 from app.core.cloud_security import WindowQuota
 from app.core.config import get_settings
-from app.core_cloud.post_writing import WritingInput, WritingOutput, write_post
+from app.core_cloud.post_writing import PostDraft, WritingInput, draft_post
 from app.core_local.dependencies import StoreDep, TokenDep, UserDep
 from app.stealth.ollama import LocalModelError, OllamaDraftProvider
 
@@ -10,7 +10,7 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 quota = WindowQuota(max_keys=1024)
 
 
-@router.post("/post-writing", response_model=WritingOutput)
+@router.post("/post-writing", response_model=PostDraft)
 def post_writing(
     value: WritingInput,
     request: Request,
@@ -34,7 +34,7 @@ def post_writing(
         provider = OllamaDraftProvider(settings.stealth_ollama_model, local_only_confirmed=True)
     except LocalModelError as error:
         raise HTTPException(503, str(error)) from None
-    result = write_post(value, provider)
+    result = draft_post(value, provider)
     if store.authenticate(token).id != user.id:
         raise HTTPException(401, "invalid_or_expired_session")
-    return WritingOutput(text=result)
+    return result

@@ -1,11 +1,21 @@
+import base64
+import io
 import json
 from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException, Response
+from PIL import Image
+from pydantic import ValidationError
 
 from app.api.routes import ai
-from app.core_cloud.post_writing import WritingInput, write_post
+from app.core_cloud.post_writing import WritingInput, draft_post, write_post
+
+LONG_TEXT = (
+    "活動剩餘便當，共 5 份，歡迎到正門一起領取！"
+    "有興趣的朋友可以先留言討論，一起確認餐點內容與領取方式，"
+    "實際安排請在參與前確認清楚，歡迎有需要的人一起加入。"
+)
 
 
 def provider(text):
@@ -13,7 +23,7 @@ def provider(text):
 
 
 def test_draft_preserves_known_numbers_and_uses_structured_output():
-    text = "活動剩餘便當，共 5 份，歡迎到正門領取！"
+    text = LONG_TEXT
     assert write_post(WritingInput(mode="generate", content=text), provider(text)) == text
 
 
@@ -47,7 +57,7 @@ def test_route_local_only_quota_and_rechecks_session(monkeypatch):
         ai,
         "OllamaDraftProvider",
         lambda *_args, **_kwargs: (
-            calls.append("inference") or provider("活動剩餘便當，歡迎一起領取！")
+            calls.append("inference") or provider(LONG_TEXT.replace(" 5 ", "幾"))
         ),
     )
     store = SimpleNamespace(authenticate=lambda token: calls.append(token) or user)
@@ -72,3 +82,76 @@ def test_route_local_only_quota_and_rechecks_session(monkeypatch):
         ai.post_writing(value, request, Response(), store, user, "synthetic-token")
     assert caught.value.status_code == 429
     ai.quota.entries.clear()
+
+
+def picture():
+    output = io.BytesIO()
+    Image.new("RGB", (32, 32), "yellow").save(output, "PNG")
+    return base64.b64encode(output.getvalue()).decode()
+
+
+def test_image_is_decoded_and_recognized_before_writing_without_uploading():
+    calls = []
+    observed = "披薩買一送一，限外帶，活動到10月31日。"
+    text = (
+        "看到披薩買一送一的外帶活動，想找也想吃披薩的朋友一起討論！"
+        "宣傳單標示活動到10月31日，實際適用品項與優惠限制請先向店家確認，"
+        "有興趣可以留言協調餐點、費用與取餐安排，再決定是否一起參加。"
+    )
+
+    def extract(messages, schema, prompt):
+        calls.append(messages)
+        return json.dumps({"text": observed if len(calls) == 1 else text})
+
+    result = draft_post(
+        WritingInput(mode="image", image_base64=picture()), SimpleNamespace(extract=extract)
+    )
+    assert result.text == text and result.source_text == observed
+    assert len(calls) == 2
+    assert base64.b64decode(calls[0][0]["images"][0]).startswith(b"\xff\xd8")
+    assert observed in calls[1][0]["content"]
+    assert "images" not in calls[1][0] and "image_base64" not in calls[1][0]["content"]
+
+
+@pytest.mark.parametrize("image", ["not_base64", "YQ=="])
+def test_invalid_images_are_rejected_before_model_call(image):
+    def never(*_):
+        raise AssertionError("must not infer")
+
+    with pytest.raises(HTTPException):
+        draft_post(WritingInput(mode="image", image_base64=image), SimpleNamespace(extract=never))
+
+
+def test_unreadable_image_does_not_invent_an_offer():
+    with pytest.raises(HTTPException) as caught:
+        draft_post(WritingInput(mode="image", image_base64=picture()), provider(""))
+    assert caught.value.detail == "post_image_unreadable"
+
+
+def test_voice_keeps_transcript_and_does_not_accept_short_or_invented_prices():
+    result = draft_post(WritingInput(mode="voice", content=LONG_TEXT), provider(LONG_TEXT))
+    assert result.source_text == LONG_TEXT and len(result.text) >= 50
+    for output in ("想揪人一起吃披薩，歡迎參加。", "空白" + " " * 60, LONG_TEXT + "每份80元"):
+        with pytest.raises(HTTPException):
+            draft_post(WritingInput(mode="voice", content=LONG_TEXT), provider(output))
+
+
+def test_generated_text_must_not_change_a_per_item_price_to_per_slice():
+    source = "大披薩每個原價399元，買一送一，限外帶。"
+    output = "大披薩每片原價399元，買一送一，限外帶。" + LONG_TEXT.replace(" 5 ", "幾")
+    with pytest.raises(HTTPException) as caught:
+        write_post(WritingInput(mode="generate", content=source), provider(output))
+    assert caught.value.detail == "post_writing_invalid_output"
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        {"mode": "voice", "content": "   "},
+        {"mode": "image", "content": "照片"},
+        {"mode": "voice", "content": "口述", "image_base64": "YQ=="},
+    ],
+)
+def test_mode_requires_the_correct_input(value):
+    with pytest.raises(ValidationError):
+        WritingInput(**value)

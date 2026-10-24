@@ -60,7 +60,11 @@ async def test_device_ai_boundary_rejects_before_inference(path):
     async with httpx.AsyncClient(transport=transport, base_url="https://192.168.1.10:8443") as c:
         assert (await c.post(path, json={})).status_code == 401
         assert (
-            await c.post(path, headers={"Authorization": "Bearer fake"}, content=b"x" * 32769)
+            await c.post(
+                path,
+                headers={"Authorization": "Bearer fake"},
+                content=b"x" * ((6 * 1024 * 1024 if path.endswith("/post-writing") else 32768) + 1),
+            )
         ).status_code == 413
         assert (await c.post(path, headers={"X-Forwarded-For": "127.0.0.1"})).status_code == 403
         assert not calls
