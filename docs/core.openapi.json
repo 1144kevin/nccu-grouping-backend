@@ -6757,6 +6757,11 @@
             "type": "boolean",
             "title": "Email Verified",
             "default": false
+          },
+          "profile_setup_required": {
+            "type": "boolean",
+            "title": "Profile Setup Required",
+            "default": false
           }
         },
         "type": "object",

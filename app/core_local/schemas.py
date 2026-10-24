@@ -58,6 +58,7 @@ class AppPasswordInput(BaseModel):
 
 
 class ProfileView(BaseModel):
+    profile_setup_required: bool = False
     deletion_pending: bool = False
     id: UUID
     email: str
