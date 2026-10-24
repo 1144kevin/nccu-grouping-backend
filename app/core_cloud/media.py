@@ -9,7 +9,7 @@ from uuid import UUID
 
 import httpx
 from fastapi import HTTPException
-from pydantic import AwareDatetime, BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field, model_validator
 
 from app.core.config import get_settings
 from app.core_cloud.images import MAX_OUTPUT_BYTES, NormalizedImage
@@ -41,8 +41,17 @@ class DraftAssets(BaseModel):
 
 
 class ImagePublish(StrictModel):
-    image_id: UUID
+    image_id: UUID | None = None
+    image_ids: list[UUID] | None = Field(default=None, min_length=1, max_length=5)
     value: PostInput
+
+    @model_validator(mode="after")
+    def valid_album(self):
+        if (self.image_id is None) == (self.image_ids is None):
+            raise ValueError("choose_one_image_input")
+        if self.image_ids is not None and len(set(self.image_ids)) != len(self.image_ids):
+            raise ValueError("duplicate_images")
+        return self
 
 
 class ImageURL(BaseModel):
@@ -186,9 +195,13 @@ class MediaService:
     def publish(self, value: ImagePublish, key: str) -> PostView:
         return PostView.model_validate(
             self.rpc(
-                "publish",
+                "publish_many" if value.image_ids is not None else "publish",
                 {
-                    "image_id": str(value.image_id),
+                    **(
+                        {"image_ids": [str(i) for i in value.image_ids]}
+                        if value.image_ids is not None
+                        else {"image_id": str(value.image_id)}
+                    ),
                     "value": value.value.model_dump(mode="json"),
                     "request_key": key,
                 },

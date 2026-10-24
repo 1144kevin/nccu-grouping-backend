@@ -5539,9 +5539,33 @@
       "ImagePublish": {
         "properties": {
           "image_id": {
-            "type": "string",
-            "format": "uuid",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Image Id"
+          },
+          "image_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array",
+                "maxItems": 5,
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Ids"
           },
           "value": {
             "$ref": "#/components/schemas/PostInput"
@@ -5550,7 +5574,6 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "image_id",
           "value"
         ],
         "title": "ImagePublish"
@@ -6645,6 +6668,14 @@
             "type": "boolean",
             "title": "Can Edit",
             "default": false
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/PostImage"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Images"
           }
         },
         "type": "object",
@@ -8248,6 +8279,34 @@
           "is_llm"
         ],
         "title": "ReplyResult"
+      },
+      "PostImage": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "width": {
+            "type": "integer",
+            "maximum": 1600.0,
+            "minimum": 1.0,
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "maximum": 1600.0,
+            "minimum": 1.0,
+            "title": "Height"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "width",
+          "height"
+        ],
+        "title": "PostImage"
       }
     },
     "securitySchemes": {

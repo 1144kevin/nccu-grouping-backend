@@ -161,7 +161,14 @@ class PostInput(Input):
         return tags
 
 
+class PostImage(BaseModel):
+    id: UUID
+    width: int = Field(ge=1, le=1600)
+    height: int = Field(ge=1, le=1600)
+
+
 class PostView(BaseModel):
+    images: list[PostImage] = Field(default_factory=list, max_length=5)
     is_demo: bool = False
     image_id: UUID | None = None
     id: UUID
