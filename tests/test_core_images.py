@@ -1,4 +1,6 @@
 import io
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from fastapi import HTTPException
@@ -21,6 +23,22 @@ def test_images_become_bounded_jpeg_and_have_deterministic_retry_hashes():
     assert value.sha256 == normalize_image(raw).sha256
     with Image.open(io.BytesIO(value.content)) as output:
         assert output.format == "JPEG" and output.mode == "RGB"
+
+
+def test_five_simultaneous_uploads_wait_for_two_decoders_instead_of_failing(monkeypatch):
+    slots = threading.BoundedSemaphore(2)
+    monkeypatch.setattr(images, "IMAGE_SLOTS", slots)
+    barrier = threading.Barrier(5)
+    raw = picture(size=(2000, 1000))
+
+    def upload(_):
+        barrier.wait(timeout=2)
+        return normalize_image(raw)
+
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        outputs = list(pool.map(upload, range(5)))
+    assert len(outputs) == 5
+    assert len({value.sha256 for value in outputs}) == 1
 
 
 def test_orientation_is_applied_but_private_metadata_is_removed():
