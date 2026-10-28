@@ -45,3 +45,22 @@ def test_timed_out_ticket_does_not_poison_future_requests():
     gate.release()
     assert gate.acquire()
     gate.release()
+
+
+def test_default_admission_can_hold_five_people_until_the_model_is_ready():
+    gate = InferenceQueue()
+    assert gate.acquire()
+    with ThreadPoolExecutor(max_workers=4) as pool:
+
+        def next_job():
+            assert gate.acquire()
+            gate.release()
+
+        futures = [pool.submit(next_job) for _ in range(4)]
+        with gate.condition:
+            assert gate.condition.wait_for(lambda: len(gate.waiters) == 4, timeout=2)
+        gate.release()
+        for future in futures:
+            future.result(timeout=2)
+    assert gate.snapshot()["completed"] == 5
+    assert gate.snapshot()["rejected"] == 0
