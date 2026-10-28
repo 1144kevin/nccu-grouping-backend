@@ -6,6 +6,7 @@ from pydantic import Field, field_validator
 
 from app.core.cloud_security import WindowQuota
 from app.core.config import get_settings
+from app.core_cloud.conversation import ConversationInput, ConversationResult, converse
 from app.core_cloud.discovery import discover
 from app.core_cloud.intake import IntakeRequest, IntakeResult
 from app.core_cloud.quick_stealth import QuickInterview, QuickResult, QuickStart
@@ -103,6 +104,23 @@ def start_quick(
     if watch is not None:
         watch.subscribe(str(user.id), service)
     return result
+
+
+@router.post("/conversation", response_model=ConversationResult)
+def conversation(value: ConversationInput, service: Cloud, request: Request):
+    settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    interpreter = None
+    if settings.environment == "local" and settings.stealth_ai_provider == "ollama_local":
+        interpreter = OllamaIntentInterpreter(
+            OllamaDraftProvider(
+                settings.stealth_ollama_model,
+                local_only_confirmed=settings.stealth_ollama_local_only_confirmed,
+            )
+        )
+    try:
+        return converse(service, value, interpreter=interpreter)
+    except LocalModelError as error:
+        raise HTTPException(503, str(error)) from None
 
 
 @router.post("/quick-interview", response_model=QuickInterview)
