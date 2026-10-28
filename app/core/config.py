@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     stealth_ollama_local_only_confirmed: bool = False
     stealth_semantic_enabled: bool = False
     stealth_embedding_model: str = "qwen3-embedding:0.6b"
+    # Separate opt-in: only the guided conversation may leave this server.
+    stealth_conversation_provider: Literal["local", "gemini"] = "local"
+    stealth_gemini_model: Literal["gemini-3.5-flash-lite"] = "gemini-3.5-flash-lite"
+    stealth_gemini_api_key: SecretStr = SecretStr("")
 
     model_config = SettingsConfigDict(
         env_file=".env",

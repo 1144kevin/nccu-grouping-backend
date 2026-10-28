@@ -3,9 +3,16 @@
 import re
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
-from app.core_cloud.intake import IntakeFacts, IntakeQuestion, IntakeRequest, ground, review
+from app.core_cloud.intake import (
+    IntakeFacts,
+    IntakeQuestion,
+    IntakeRequest,
+    ground,
+    retain_supported_facts,
+    review,
+)
 from app.core_cloud.quick_stealth import keyword_facts, latest_brand, prepare
 from app.core_cloud.stealth import CloudSignalInput
 from app.stealth.schemas import StrictModel
@@ -25,11 +32,18 @@ QuestionField = Literal[
 class ConversationInput(IntakeRequest):
     turns: list[str] = Field(min_length=1, max_length=16)
     answer_fields: list[QuestionField | None] = Field(default_factory=list, max_length=16)
+    assistant_turns: list[str] = Field(default_factory=list, max_length=15)
 
     @model_validator(mode="after")
     def aligned_answers(self):
         if self.answer_fields and len(self.answer_fields) != len(self.turns):
             raise ValueError("answer context must align with user turns")
+        if self.assistant_turns and len(self.assistant_turns) != len(self.turns) - 1:
+            raise ValueError("assistant context must align with user turns")
+        if any(not t.strip() or len(t) > 600 or "\0" in t for t in self.assistant_turns):
+            raise ValueError("invalid assistant context")
+        if sum(map(len, self.assistant_turns)) > 8000:
+            raise ValueError("assistant context too long")
         return self
 
 
@@ -46,7 +60,27 @@ class ConversationResult(StrictModel):
     question: IntakeQuestion | None
     choices: list[ChatChoice]
     ready_for_review: bool
-    interpretation: Literal["local_model", "quick_answer", "keyword_fallback"]
+    interpretation: Literal["local_model", "quick_answer", "keyword_fallback", "gemini"]
+
+
+class NaturalTurn(StrictModel):
+    message: str = Field(min_length=1, max_length=600)
+    question_field: QuestionField | None = None
+    facts: IntakeFacts
+
+    @field_validator("message")
+    @classmethod
+    def draft_only(cls, text):
+        if (
+            not text.strip()
+            or "\0" in text
+            or re.search(
+                r"已(?:經)?(?:幫你|為你)?(?:完成)?(?:配對|成團|下單|付款|加入拼單|儲存需求)", text
+            )
+        ):
+            raise ValueError("dialogue must not claim a completed action")
+        text.encode("utf-8")
+        return text.strip()
 
 
 OPTIONS = {
@@ -198,11 +232,24 @@ def quick_answer(value, turns):
     return facts
 
 
-def converse(service, value: ConversationInput, *, interpreter=None, now=None):
+def converse(
+    service, value: ConversationInput, *, interpreter=None, dialogue=None, now=None, on_message=None
+):
     fields = value.answer_fields or [None] * len(value.turns)
     turns = [contextual_turn(turn, field) for turn, field in zip(value.turns, fields, strict=True)]
-    facts = quick_answer(value, turns)
+    prepared = value.model_copy(update={"turns": turns})
+    natural = dialogue.respond(prepared) if dialogue else None
+    facts = natural.facts if natural else quick_answer(value, turns)
     method = "quick_answer"
+    if natural:
+        method = "gemini"
+        original = "\n".join(turns)
+        ground(facts, original)
+        if value.previous is not None and len(turns) > 1:
+            facts = retain_supported_facts(facts, value.previous, turns)
+            ground(facts, original)
+        facts.tags = [tag for tag in facts.tags if tag in original]
+        facts.dietary_requirements = [tag for tag in facts.dietary_requirements if tag in original]
     if facts is None:
         if interpreter is None:
             # Preserve the existing safe one-turn fallback, never erase follow-up corrections.
@@ -249,6 +296,31 @@ def converse(service, value: ConversationInput, *, interpreter=None, now=None):
             field="delay_minutes", text="開始加上配合長度超過七天了，請改成七天內的時間。"
         )
     next_field = next((f for f in priority if f in all_questions), None)
+    # The model chooses the conversational direction, but may not skip unresolved
+    # cost/role conflicts or treat its own previous replies as user commitments.
+    essential = (
+        "delay_minutes"
+        if window_invalid
+        else "roles"
+        if role_missing
+        else "cost_basis"
+        if facts.cost_needs_clarification
+        else "known_cost_twd"
+        if "known_cost_twd" in all_questions
+        else None
+    )
+    natural_allowed = natural is not None and (
+        (
+            essential is None
+            and (
+                natural.question_field in all_questions
+                or (natural.question_field is None and facts.category is not None)
+            )
+        )
+        or (essential is not None and natural.question_field == essential)
+    )
+    if natural_allowed:
+        next_field = natural.question_field
     question = None
     if next_field:
         question = IntakeQuestion(field=next_field, text=QUESTIONS[next_field])
@@ -278,7 +350,11 @@ def converse(service, value: ConversationInput, *, interpreter=None, now=None):
             choices = [c for c in choices if c.answer == "我願意取餐"]
     ready = signal is not None and question is None
     message = question.text if question else "需求整理好了！看看下方條件，確認後我就幫你找夥伴。"
-    if len(turns) > 1 and question:
+    if natural_allowed and (question is not None or signal is not None):
+        message = natural.message
+        if question is not None:
+            question.text = message
+    elif len(turns) > 1 and question:
         message = "好，我更新好了。" + message
     return ConversationResult(
         facts=facts,

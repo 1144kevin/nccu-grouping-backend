@@ -8,6 +8,7 @@ from app.core.cloud_security import WindowQuota
 from app.core.config import get_settings
 from app.core_cloud.conversation import ConversationInput, ConversationResult, converse
 from app.core_cloud.discovery import discover
+from app.core_cloud.gemini_conversation import GeminiDialogue
 from app.core_cloud.intake import IntakeRequest, IntakeResult
 from app.core_cloud.quick_stealth import QuickInterview, QuickResult, QuickStart
 from app.core_cloud.quick_stealth import interview as quick_interview
@@ -60,7 +61,7 @@ Cloud = Annotated[CloudStealth, Depends(cloud)]
 
 
 @router.get("/quick-status")
-def quick_status(service: Cloud):
+def quick_status(service: Cloud, request: Request):
     try:
         service.store._request(
             "POST",
@@ -75,7 +76,13 @@ def quick_status(service: Cloud):
         if error.status_code != 503:
             raise
         return {"ready": False}
-    return {"ready": True}
+    settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    return {
+        "ready": True,
+        "conversation_provider": settings.stealth_conversation_provider,
+        "conversation_configured": settings.stealth_conversation_provider != "gemini"
+        or bool(settings.stealth_gemini_api_key.get_secret_value().strip()),
+    }
 
 
 @router.post("/quick-start", response_model=QuickResult)
@@ -107,8 +114,12 @@ def start_quick(
 
 
 @router.post("/conversation", response_model=ConversationResult)
-def conversation(value: ConversationInput, service: Cloud, request: Request):
+def conversation(value: ConversationInput, service: Cloud, request: Request, user: UserDep):
     settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    if settings.stealth_conversation_provider == "gemini":
+        return converse(
+            service, value, dialogue=GeminiDialogue(settings.stealth_gemini_api_key, str(user.id))
+        )
     interpreter = None
     if settings.environment == "local" and settings.stealth_ai_provider == "ollama_local":
         interpreter = OllamaIntentInterpreter(
