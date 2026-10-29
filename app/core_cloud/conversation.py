@@ -29,10 +29,24 @@ QuestionField = Literal[
 ]
 
 
+class ConversationPreferences(StrictModel):
+    tone: Literal["warm", "direct", "playful"] = "warm"
+    context: str = Field(default="", max_length=500)
+
+    @field_validator("context")
+    @classmethod
+    def valid_context(cls, text):
+        if "\0" in text:
+            raise ValueError("invalid preference context")
+        text.encode("utf-8")
+        return text.strip()
+
+
 class ConversationInput(IntakeRequest):
     turns: list[str] = Field(min_length=1, max_length=16)
     answer_fields: list[QuestionField | None] = Field(default_factory=list, max_length=16)
     assistant_turns: list[str] = Field(default_factory=list, max_length=15)
+    preferences: ConversationPreferences | None = None
 
     @model_validator(mode="after")
     def aligned_answers(self):

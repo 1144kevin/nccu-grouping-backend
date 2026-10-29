@@ -96,6 +96,61 @@ def test_missing_key_never_starts_a_request():
         module.GeminiDialogue(SecretStr(""), "actor")
 
 
+def test_preferences_guide_dialogue_without_becoming_confirmed_facts():
+    requests = []
+
+    def handle(request):
+        requests.append(json.loads(request.content))
+        return response()
+
+    provider = module.GeminiDialogue(
+        SecretStr("test-only-placeholder"), "actor", transport=httpx.MockTransport(handle)
+    )
+    value = ConversationInput(
+        turns=["想喝飲料"],
+        preferences={"tone": "direct", "context": "平常預算80元，在東側門，不想取餐"},
+    )
+    provider.respond(value)
+    assert json.loads(requests[0]["systemInstruction"]["parts"][1]["text"].split("：", 1)[1]) == {
+        "tone": "direct",
+        "context": "平常預算80元，在東側門，不想取餐",
+    }
+    # Preference edits are part of the cache key and must not reuse an older reply.
+    provider.respond(value.model_copy(update={"preferences": None}))
+    assert len(requests) == 2
+
+    dialogue = Mock()
+    dialogue.respond.return_value = NaturalTurn(
+        facts=IntakeFacts(
+            title="飲料需求",
+            category="drink",
+            location_id="east_gate",
+            budget_max_twd=80,
+            roles=["pickup"],
+            roles_confirmed=True,
+        ),
+        message="平常在東側門，這次也方便嗎？",
+        question_field="location_id",
+    )
+    result = converse(Mock(), value, dialogue=dialogue)
+    assert result.facts.location_id is None
+    assert result.facts.budget_max_twd is None
+    assert result.facts.roles == []
+
+
+@pytest.mark.parametrize(
+    "preferences",
+    [
+        {"tone": "unrestricted"},
+        {"context": "長" * 501},
+        {"context": "bad\0context"},
+    ],
+)
+def test_preferences_are_bounded_and_validated(preferences):
+    with pytest.raises(ValidationError):
+        ConversationInput(turns=["飲料"], preferences=preferences)
+
+
 def test_a_natural_reply_selects_the_relevant_question_without_writing_anything():
     service, provider = Mock(), Mock()
     provider.respond.return_value = answer()
