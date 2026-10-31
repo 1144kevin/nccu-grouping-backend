@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import Field, ValidationError, field_validator, model_validator
 
+from app.core_cloud.availability import all_day
 from app.core_cloud.grounding import (
     FOREIGN_CURRENCY,
     NUMBER,
@@ -15,6 +16,7 @@ from app.core_cloud.grounding import (
     personal_role_evidence,
     supported_roles,
 )
+from app.stealth.locations import ALIASES
 from app.stealth.ollama import LocalModelError
 from app.stealth.provider_contracts import ExtractionTransport
 from app.stealth.schemas import Category, Location, Money, Role, SignalKind, StrictModel, Tag
@@ -106,7 +108,7 @@ def review(facts: IntakeFacts, model: str) -> IntakeResult:
     if facts.location_id is None:
         ask(
             "location_id",
-            "哪裡方便？目前先支援政大正門、東側門、南門。其他地點請先手動選擇可配合範圍。",
+            "哪裡方便碰面或取餐？可以說店名、地址或地標；正門、東側門、南門只是建議。",
         )
     if facts.delay_minutes is None:
         ask(
@@ -162,7 +164,8 @@ PROMPT = """你是偷揪的需求整理員。只從使用者陳述抽取事實�
 kind: need=想找人一起吃，offer=有食物/優惠券可提供，plan=明確願意順路取餐。
 category: meal 正餐，pizza 披薩，drink 飲料，bakery 麵包，snack 零食。
 acceptable_categories 只列本人明確接受的其他類型；資源 offer 不能有替代類型。
-location_id: main_gate 政大正門，east_gate 政大東側門，south_gate 政大南門。其他地點 null。
+location_id: 政大正門用main_gate，東側門用east_gate，南門用south_gate。
+其他地點保留使用者原文店名、地址或地標，不限這三個地點。
 delay_minutes 是從現在多久後開始，duration_minutes 是可配合長度。1小時=60分鐘。
 今晚/明天幾點等絕對或模糊時間不能自行換算，delay_minutes=null，需補問相對時間。
 budget_max_twd 是每人預算上限，known_cost_twd 是已確認每人報價，兩者不同。
@@ -272,7 +275,7 @@ def retain_supported_facts(current: IntakeFacts, previous: IntakeFacts, turns: l
             "cost",
         ),
         (r"後|開始|現在|時間|今晚|明天|幾點", ("delay_minutes",), "start"),
-        (r"持續|配合|多久|長度|期間|結束|時間", ("duration_minutes",), "duration"),
+        (r"持續|配合|多久|長度|期間|結束|時間|整天|全天", ("duration_minutes",), "duration"),
         (
             r"下單|訂餐|取餐|拿餐|優惠券|分食|分享|角色|願意|負責",
             ("roles", "roles_confirmed"),
@@ -289,6 +292,8 @@ def retain_supported_facts(current: IntakeFacts, previous: IntakeFacts, turns: l
         (r"飲食|過敏|素食|花生|忌口|不能吃|不吃", ("dietary_requirements",), None),
     ]
     for topic, fields, evidence in groups:
+        if fields == ("location_id",) and current.location_id is not None:
+            continue
         if re.search(topic, latest):
             continue
         if evidence:
@@ -360,16 +365,15 @@ def ground(facts: IntakeFacts, original: str) -> list[str]:
                 facts.budget_max_twd = amount
                 facts.budget_unknown = False
                 facts.evidence.budget = change.group()
-    location_names = {
-        "main_gate": ("政大正門", "正門"),
-        "east_gate": ("政大東側門", "東側門", "東門"),
-        "south_gate": ("政大南門", "南門"),
-    }
+    location_names = ALIASES
     if facts.location_id is not None:
         mentions = [
             match
             for match in re.finditer(
-                "|".join(map(re.escape, location_names[facts.location_id])), original
+                "|".join(
+                    map(re.escape, location_names.get(facts.location_id, (facts.location_id,)))
+                ),
+                original,
             )
         ]
         if not mentions or re.search(
@@ -387,9 +391,10 @@ def ground(facts: IntakeFacts, original: str) -> list[str]:
     if corrected_title != facts.title:
         prefix = ""
         if facts.location_id and not any(
-            alias in corrected_title for alias in location_names[facts.location_id]
+            alias in corrected_title
+            for alias in location_names.get(facts.location_id, (facts.location_id,))
         ):
-            prefix = location_names[facts.location_id][0]
+            prefix = location_names.get(facts.location_id, (facts.location_id,))[0]
         facts.title = (prefix + corrected_title.strip(" ·，：:-"))[:160] or "待確認需求"
         warnings.append("摘要中的地點與已確認欄位不符，已移除猜測地點；請再次檢查需求表單。")
 
@@ -512,4 +517,9 @@ def ground(facts: IntakeFacts, original: str) -> list[str]:
             r"暫不負責|沒有角色|沒有任何角色|不負責任何|不負責其他|不提供資源", roles
         ):
             facts.roles_confirmed = False
+    full_day = all_day(original)
+    if full_day:
+        facts.duration_minutes = 1440
+        facts.delay_minutes = 0
+        facts.evidence.duration = full_day[1]
     return list(dict.fromkeys(warnings))

@@ -3,9 +3,11 @@
 import re
 from datetime import UTC, datetime, timedelta
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 from pydantic import Field, field_validator, model_validator
 
+from app.core_cloud.availability import all_day
 from app.core_cloud.grounding import denied_roles, personal_role_evidence, supported_roles
 from app.core_cloud.intake import IntakeFacts, IntakeQuestion, IntakeRequest, review
 from app.core_cloud.stealth import CloudAgentInput, CloudSignalCreated, CloudSignalInput
@@ -204,6 +206,14 @@ def prepare(text, history, *, interpreter=None, now=None, facts=None, original=N
     # Relative dates must still pass the original seven-day and one-day window validators.
     starts = now + timedelta(minutes=delay)
     ends = starts + timedelta(minutes=duration)
+    full_day = all_day(original or text)
+    if full_day:
+        local = now.astimezone(ZoneInfo("Asia/Taipei"))
+        midnight = (local + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        starts = midnight.astimezone(UTC) if full_day[0] == "tomorrow" else now
+        ends = (midnight + timedelta(days=1) if full_day[0] == "tomorrow" else midnight).astimezone(
+            UTC
+        )
     budget = facts.budget_max_twd
     if budget is None and not facts.budget_unknown and previous:
         budget = previous.budget_max_twd

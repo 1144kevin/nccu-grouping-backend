@@ -135,7 +135,7 @@ OPTIONS = {
 }
 QUESTIONS = {
     "category": "我可以幫你找一起吃喝、分享優惠或順路取餐的夥伴。你現在想吃或喝什麼？",
-    "location_id": "在哪裡碰面或取餐比較方便？目前可以找政大正門、東側門或南門的夥伴。",
+    "location_id": "在哪裡碰面或取餐比較方便？店名、地址或地標都可以。",
     "delay_minutes": "你想從什麼時候開始？可以說「現在」或「半小時後」。",
     "duration_minutes": "開始之後，大概能配合多久？還沒決定的話，也可以先找兩小時。",
     "budget_max_twd": "每人預算大概多少？還沒決定也沒關係，我會保留待討論。",
@@ -324,14 +324,7 @@ def converse(
         else None
     )
     natural_allowed = natural is not None and (
-        (
-            essential is None
-            and (
-                natural.question_field in all_questions
-                or (natural.question_field is None and facts.category is not None)
-            )
-        )
-        or (essential is not None and natural.question_field == essential)
+        essential is None or natural.question_field == essential
     )
     if natural_allowed:
         next_field = natural.question_field
@@ -364,7 +357,7 @@ def converse(
             choices = [c for c in choices if c.answer == "我願意取餐"]
     ready = signal is not None and question is None
     message = question.text if question else "需求整理好了！看看下方條件，確認後我就幫你找夥伴。"
-    if natural_allowed and (question is not None or signal is not None):
+    if natural_allowed:
         message = natural.message
         if question is not None:
             question.text = message

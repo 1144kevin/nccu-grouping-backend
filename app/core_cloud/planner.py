@@ -87,7 +87,7 @@ def plan_terms(
         "snack": "零食",
     }.get(category, "餐點")
     place = {"main_gate": "政大正門", "east_gate": "政大東側門", "south_gate": "政大南門"}.get(
-        location, "約定集合點"
+        location, location
     )
     # Keep editable money in structured fields: a changed amount must not leave a stale
     # original quote embedded in the generated public description.

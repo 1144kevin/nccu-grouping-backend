@@ -7,6 +7,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import (
+    AfterValidator,
     AwareDatetime,
     BaseModel,
     ConfigDict,
@@ -14,6 +15,8 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+
+from app.stealth.locations import normalize_location
 
 
 class StrictModel(BaseModel):
@@ -42,7 +45,7 @@ class ProposalStatus(StrEnum):
 
 Role = Literal["order", "pickup", "coupon", "share"]
 Category = Literal["pizza", "meal", "drink", "bakery", "snack"]
-Location = Literal["east_gate", "main_gate", "south_gate"]
+Location = Annotated[str, Field(min_length=1, max_length=120), AfterValidator(normalize_location)]
 DeclineReason = Literal["not_now", "time", "budget", "food", "privacy", "other"]
 Tag = Annotated[str, Field(min_length=1, max_length=32)]
 Money = Annotated[int, Field(strict=True, ge=0, le=100_000)]
