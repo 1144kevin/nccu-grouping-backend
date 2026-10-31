@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from pydantic import Field, field_validator, model_validator
 
-from app.core_cloud.availability import all_day
+from app.core_cloud.availability import all_day, participation_preference
 from app.core_cloud.grounding import denied_roles, personal_role_evidence, supported_roles
 from app.core_cloud.intake import IntakeFacts, IntakeQuestion, IntakeRequest, review
 from app.core_cloud.stealth import CloudAgentInput, CloudSignalCreated, CloudSignalInput
@@ -137,7 +137,7 @@ def interview(service, value: IntakeRequest, *, interpreter=None, now=None):
     role_missing = (facts.kind == "offer" and not facts.roles) or (
         facts.kind == "plan" and "pickup" not in facts.roles
     )
-    window_invalid = (facts.delay_minutes or 0) + (facts.duration_minutes or 120) > 10080
+    window_invalid = (facts.delay_minutes or 0) + (facts.duration_minutes or 1440) > 10080
     if (facts.category or latest_brand(original)) and not role_missing and not window_invalid:
         signal, sources, _ = prepare(facts.title, history, now=now, facts=facts, original=original)
     questions = [
@@ -202,7 +202,7 @@ def prepare(text, history, *, interpreter=None, now=None, facts=None, original=N
         or (previous.location_id if previous else "main_gate")
     )
     delay = facts.delay_minutes if facts.delay_minutes is not None else 0
-    duration = facts.duration_minutes if facts.duration_minutes is not None else 120
+    duration = facts.duration_minutes if facts.duration_minutes is not None else 1440
     # Relative dates must still pass the original seven-day and one-day window validators.
     starts = now + timedelta(minutes=delay)
     ends = starts + timedelta(minutes=duration)
@@ -232,10 +232,11 @@ def prepare(text, history, *, interpreter=None, now=None, facts=None, original=N
         acceptable_categories=[] if facts.kind == "offer" else facts.acceptable_categories,
         starts_at=starts,
         ends_at=ends,
-        expires_at=ends,
+        expires_at=now + timedelta(hours=24),
         budget_max_twd=budget,
         known_cost_twd=facts.known_cost_twd,
         roles=facts.roles,
+        participation_preference=participation_preference(original or text),
         tags=tags,
         dietary_requirements=list(
             dict.fromkeys(
@@ -257,11 +258,11 @@ def prepare(text, history, *, interpreter=None, now=None, facts=None, original=N
         + (
             "依這次描述"
             if facts.delay_minutes is not None and facts.duration_minutes is not None
-            else "開始依這次描述，未指定配合長度，先找兩小時"
+            else "開始依這次描述，暫定可配合24小時"
             if facts.delay_minutes is not None
             else "未指定開始時間，先從現在找起；配合長度依這次描述"
             if facts.duration_minutes is not None
-            else "暫找接下來兩小時，可在句子中更改"
+            else "暫定接下來24小時，可在聊天中更改"
         ),
         "預算："
         + (
@@ -291,9 +292,9 @@ def start(service, value: QuickStart, key: str, *, interpreter=None):
         if saved["title"] != value.text or (
             value.confirmed_signal is not None
             and CloudSignalInput.model_validate(
-                {field: saved[field] for field in CloudSignalInput.model_fields}
-            ).model_dump()
-            != value.confirmed_signal.model_dump()
+                {field: saved.get(field) for field in CloudSignalInput.model_fields}
+            ).model_dump(exclude={"expires_at"})
+            != value.confirmed_signal.model_dump(exclude={"expires_at"})
         ):
             raise HTTPException(409, "idempotency_payload_conflict")
         return QuickResult(

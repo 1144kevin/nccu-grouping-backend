@@ -114,6 +114,7 @@ class SignalInput(StrictModel):
     dietary_requirements: list[Tag] = Field(default_factory=list, max_length=12)
     dietary_verified: list[Tag] = Field(default_factory=list, max_length=12)
     roles: list[Role] = Field(default_factory=list, max_length=4)
+    participation_preference: Literal["receive", "flexible"] | None = None
 
     @field_validator(
         "tags", "dietary_requirements", "dietary_verified", "roles", "acceptable_categories"
@@ -133,8 +134,7 @@ class SignalInput(StrictModel):
             raise ValueError("starts_at must precede ends_at")
         if (self.ends_at - self.starts_at).total_seconds() > 24 * 3600:
             raise ValueError("signal window is limited to 24 hours")
-        if self.expires_at > self.ends_at:
-            raise ValueError("expires_at must not be later than ends_at")
+        # Request lifetime is independent from the time the user can participate.
         if self.kind == SignalKind.PLAN and "pickup" not in self.roles:
             raise ValueError("plan must explicitly authorize pickup")
         if self.kind == SignalKind.OFFER and not self.roles:

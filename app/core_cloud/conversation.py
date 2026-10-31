@@ -301,7 +301,7 @@ def converse(
     role_missing = (facts.kind == "offer" and not facts.roles) or (
         facts.kind == "plan" and "pickup" not in facts.roles
     )
-    window_invalid = (facts.delay_minutes or 0) + (facts.duration_minutes or 120) > 10080
+    window_invalid = (facts.delay_minutes or 0) + (facts.duration_minutes or 1440) > 10080
     if role_missing:
         priority.insert(0, "roles")
     if window_invalid:

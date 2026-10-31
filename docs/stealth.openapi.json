@@ -1867,6 +1867,21 @@
             "maxItems": 4,
             "title": "Roles"
           },
+          "participation_preference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "receive",
+                  "flexible"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Participation Preference"
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -2036,6 +2051,21 @@
             "type": "array",
             "maxItems": 4,
             "title": "Roles"
+          },
+          "participation_preference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "receive",
+                  "flexible"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Participation Preference"
           }
         },
         "additionalProperties": false,

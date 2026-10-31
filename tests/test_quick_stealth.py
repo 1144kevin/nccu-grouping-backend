@@ -34,7 +34,7 @@ def test_one_sentence_has_a_search_window_but_never_invents_price_or_duties():
     value, sources, method = prepare("我今天想喝50嵐", [], now=NOW)
     assert value.category == "drink" and "品牌:50嵐" in value.tags
     assert value.roles == [] and value.known_cost_twd is None and value.budget_max_twd is None
-    assert value.starts_at == NOW and value.ends_at == NOW + timedelta(hours=2)
+    assert value.starts_at == NOW and value.ends_at == NOW + timedelta(hours=24)
     assert value.location_id == "main_gate" and "首次建議" in sources[0]
     assert method == "keyword_fallback"
 
@@ -142,7 +142,7 @@ def test_optional_interview_does_not_need_all_fields_and_never_activates_or_save
     )
     result = interview(service, IntakeRequest(turns=["想喝50嵐"]), interpreter=interpreter, now=NOW)
     assert result.signal is not None and result.signal.location_id == "main_gate"
-    assert result.signal.ends_at == NOW + timedelta(hours=2)
+    assert result.signal.ends_at == NOW + timedelta(hours=24)
     assert result.signal.budget_max_twd is None and result.signal.roles == []
     assert result.questions and all(
         q.field in ("location_id", "delay_minutes", "budget_max_twd") for q in result.questions

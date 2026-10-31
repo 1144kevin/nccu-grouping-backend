@@ -69,14 +69,14 @@ def test_restart_does_not_reuse_the_previous_interview():
     assert result.budget_max_twd is None and result.location_id is None
 
 
-def test_stale_snapshot_cannot_undo_an_earlier_budget_correction():
+def test_stale_snapshot_keeps_the_latest_explicit_budget_correction():
     from app.core_cloud.intake import retain_supported_facts
 
     prior = complete(evidence={"budget": "預算120元"})
     result = retain_supported_facts(
         IntakeFacts(title="補充"), prior, ["預算120元", "預算改80元", "我願意分食"]
     )
-    assert result.budget_max_twd is None
+    assert result.budget_max_twd == 80
 
 
 @pytest.mark.parametrize(

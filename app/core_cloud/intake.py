@@ -10,6 +10,7 @@ from app.core_cloud.grounding import (
     FOREIGN_CURRENCY,
     NUMBER,
     denied_roles,
+    explicit_budget,
     integer,
     minutes_supported,
     money_supported,
@@ -517,6 +518,10 @@ def ground(facts: IntakeFacts, original: str) -> list[str]:
             r"暫不負責|沒有角色|沒有任何角色|不負責任何|不負責其他|不提供資源", roles
         ):
             facts.roles_confirmed = False
+    stated_budget = explicit_budget(original)
+    if stated_budget:
+        facts.budget_max_twd, facts.evidence.budget = stated_budget
+        facts.budget_unknown = False
     full_day = all_day(original)
     if full_day:
         facts.duration_minutes = 1440
