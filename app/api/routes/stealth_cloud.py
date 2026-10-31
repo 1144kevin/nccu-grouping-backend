@@ -13,6 +13,7 @@ from app.core_cloud.intake import IntakeRequest, IntakeResult
 from app.core_cloud.quick_stealth import QuickInterview, QuickResult, QuickStart
 from app.core_cloud.quick_stealth import interview as quick_interview
 from app.core_cloud.quick_stealth import start as quick_start
+from app.core_cloud.reply_speech import SpeechInput, synthesize
 from app.core_cloud.reply_suggestions import (
     ReplyRequest,
     ReplyResult,
@@ -132,6 +133,15 @@ def conversation(value: ConversationInput, service: Cloud, request: Request, use
         return converse(service, value, interpreter=interpreter)
     except LocalModelError as error:
         raise HTTPException(503, str(error)) from None
+
+
+@router.post("/speech")
+def reply_speech(value: SpeechInput, request: Request, user: UserDep, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    if settings.stealth_conversation_provider != "gemini":
+        raise HTTPException(503, "stealth_gemini_not_configured")
+    return synthesize(value, settings.stealth_gemini_api_key, str(user.id))
 
 
 @router.post("/quick-interview", response_model=QuickInterview)
