@@ -2,6 +2,7 @@ from typing import Annotated, Literal
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from fastapi.responses import StreamingResponse
 from pydantic import Field, field_validator
 
 from app.core.cloud_security import WindowQuota
@@ -13,7 +14,7 @@ from app.core_cloud.intake import IntakeRequest, IntakeResult
 from app.core_cloud.quick_stealth import QuickInterview, QuickResult, QuickStart
 from app.core_cloud.quick_stealth import interview as quick_interview
 from app.core_cloud.quick_stealth import start as quick_start
-from app.core_cloud.reply_speech import SpeechInput, synthesize
+from app.core_cloud.reply_speech import SpeechInput, stream_speech, synthesize
 from app.core_cloud.reply_suggestions import (
     ReplyRequest,
     ReplyResult,
@@ -142,6 +143,18 @@ def reply_speech(value: SpeechInput, request: Request, user: UserDep, response: 
     if settings.stealth_conversation_provider != "gemini":
         raise HTTPException(503, "stealth_gemini_not_configured")
     return synthesize(value, settings.stealth_gemini_api_key, str(user.id))
+
+
+@router.post("/speech-stream")
+def reply_speech_stream(value: SpeechInput, request: Request, user: UserDep):
+    settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    if settings.stealth_conversation_provider != "gemini":
+        raise HTTPException(503, "stealth_gemini_not_configured")
+    return StreamingResponse(
+        stream_speech(value, settings.stealth_gemini_api_key, str(user.id)),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.post("/quick-interview", response_model=QuickInterview)

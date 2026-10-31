@@ -55,3 +55,51 @@ def test_speech_quota_errors_are_sanitized_without_retry():
             transport=httpx.MockTransport(handle),
         )
     assert caught.value.detail == "stealth_gemini_quota"
+
+
+def test_stream_delivers_audio_before_completion_and_caches_replay():
+    module._cache.clear()
+    module._quota.entries.clear()
+    state = {"completed": False, "calls": 0}
+    pcm = base64.b64encode(b"\0\0" * 240).decode()
+
+    class Parts(httpx.SyncByteStream):
+        def __iter__(self):
+            yield (
+                "data: "
+                + json.dumps(
+                    {
+                        "event_type": "step.delta",
+                        "delta": {
+                            "type": "audio",
+                            "data": pcm,
+                            "sample_rate": 24000,
+                            "channels": 1,
+                        },
+                    }
+                )
+                + "\n\n"
+            ).encode()
+            state["completed"] = True
+            yield b'data: {"event_type":"interaction.completed"}\n\ndata: [DONE]\n\n'
+
+    def handle(request):
+        state["calls"] += 1
+        assert json.loads(request.content)["stream"] is True
+        return httpx.Response(200, stream=Parts())
+
+    value = module.SpeechInput(text="串流測試")
+    stream = module.stream_speech(
+        value, SecretStr("fake-key"), "stream-test", transport=httpx.MockTransport(handle)
+    )
+    assert "ready" in next(stream)
+    assert "audio" in next(stream)
+    assert not state["completed"]
+    assert "done" in "".join(stream)
+    replay = "".join(
+        module.stream_speech(
+            value, SecretStr("fake-key"), "stream-test", transport=httpx.MockTransport(handle)
+        )
+    )
+    assert "audio" in replay and "done" in replay
+    assert state["calls"] == 1
