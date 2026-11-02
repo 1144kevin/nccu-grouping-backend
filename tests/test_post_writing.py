@@ -128,12 +128,67 @@ def test_unreadable_image_does_not_invent_an_offer():
     assert caught.value.detail == "post_image_unreadable"
 
 
-def test_voice_keeps_transcript_and_does_not_accept_short_or_invented_prices():
+def test_voice_keeps_transcript_and_recovers_without_using_short_or_invented_model_text():
     result = draft_post(WritingInput(mode="voice", content=LONG_TEXT), provider(LONG_TEXT))
     assert result.source_text == LONG_TEXT and len(result.text) >= 50
     for output in ("想揪人一起吃披薩，歡迎參加。", "空白" + " " * 60, LONG_TEXT + "每份80元"):
-        with pytest.raises(HTTPException):
-            draft_post(WritingInput(mode="voice", content=LONG_TEXT), provider(output))
+        result = draft_post(WritingInput(mode="voice", content=LONG_TEXT), provider(output))
+        assert result.draft_method == "spoken_facts"
+        assert result.source_text == LONG_TEXT and LONG_TEXT in result.text
+        assert "80" not in result.text
+        assert result.text != output
+
+
+def test_short_fries_request_gets_an_editable_source_draft_if_both_attempts_fail():
+    source = "我想要吃一堆麥當勞薯條 有人要一起吃嗎"
+    prompts = []
+
+    def extract(_messages, _schema, prompt):
+        prompts.append(prompt)
+        return json.dumps({"text": "想吃薯條，有人一起嗎？"})
+
+    result = draft_post(
+        WritingInput(mode="voice", content=source), SimpleNamespace(extract=extract)
+    )
+    assert len(prompts) == 2
+    assert "JSON 格式或字數不符" in prompts[1]
+    assert result.draft_method == "spoken_facts" and result.source_text == source
+    assert source in result.text and 50 <= len(result.text) <= 500
+    assert not any(character.isdigit() for character in result.text)
+
+
+def test_repair_is_told_to_remove_an_invented_number():
+    prompts = []
+    replies = iter((LONG_TEXT + "每人99元", LONG_TEXT))
+
+    def extract(_messages, _schema, prompt):
+        prompts.append(prompt)
+        return json.dumps({"text": next(replies)})
+
+    result = draft_post(
+        WritingInput(mode="voice", content=LONG_TEXT), SimpleNamespace(extract=extract)
+    )
+    assert result.draft_method == "model"
+    assert "新增了原文沒有的數字" in prompts[1]
+    assert result.text == LONG_TEXT
+
+
+def test_voice_fallback_does_not_hide_an_offline_model():
+    from app.stealth.ollama import LocalModelError
+
+    def offline(*_):
+        raise LocalModelError("local_model_unavailable")
+
+    with pytest.raises(HTTPException) as caught:
+        draft_post(WritingInput(mode="voice", content="想吃薯條"), SimpleNamespace(extract=offline))
+    assert caught.value.detail == "local_model_unavailable"
+
+
+def test_overlong_voice_source_is_not_silently_cut_to_fit_fallback():
+    source = "原始需求很長，" * 100
+    with pytest.raises(HTTPException) as caught:
+        draft_post(WritingInput(mode="voice", content=source), provider("太短"))
+    assert caught.value.status_code == 422 and caught.value.detail == "post_voice_too_long"
 
 
 def test_generated_text_must_not_change_a_per_item_price_to_per_slice():

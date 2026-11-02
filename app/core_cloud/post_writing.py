@@ -3,6 +3,7 @@
 import base64
 import binascii
 import json
+import logging
 import re
 from typing import Literal
 
@@ -12,6 +13,8 @@ from pydantic import Field, ValidationError, field_validator, model_validator
 from app.core_cloud.images import normalize_image
 from app.core_local.schemas import Input
 from app.stealth.ollama import LocalModelError
+
+logger = logging.getLogger(__name__)
 
 
 class WritingInput(Input):
@@ -55,7 +58,7 @@ class WritingOutput(Input):
 
 class PostDraft(WritingOutput):
     source_text: str = ""
-    draft_method: Literal["model", "recognized_facts"] = "model"
+    draft_method: Literal["model", "recognized_facts", "spoken_facts"] = "model"
 
 
 class ImageReading(Input):
@@ -113,6 +116,20 @@ def draft_post(value: WritingInput, provider) -> PostDraft:
     try:
         return PostDraft(text=write_post(text_value, provider), source_text=source)
     except HTTPException as error:
+        if error.detail == "post_writing_invalid_output" and value.mode == "voice":
+            # Reject the failed model text, but preserve the user's actual words.
+            # A neutral invitation does not add prices, quantities or promises.
+            if "\x00" in source or any(0xD800 <= ord(c) <= 0xDFFF for c in source):
+                raise
+            text = (
+                "想找有相同需求的朋友一起拼單！\n我的想法是：\n"
+                + source.strip()
+                + "\n\n有興趣的朋友可以留言或私訊，一起討論餐點內容與安排，"
+                "確認彼此需求後，再決定是否參加。"
+            )
+            if len(text) > 500:
+                raise HTTPException(422, "post_voice_too_long") from None
+            return PostDraft(text=text, source_text=source, draft_method="spoken_facts")
         # Successful recognition must not be lost just because a writer adds an
         # unsupported price or fails the minimum length check twice. Keep exact
         # recognized text, label the conservative draft, and require user review.
@@ -133,7 +150,7 @@ def draft_post(value: WritingInput, provider) -> PostDraft:
         return PostDraft(text=text, source_text=source, draft_method="recognized_facts")
 
 
-def write_post(value: WritingInput, provider, *, repairing=False) -> str:
+def write_post(value: WritingInput, provider, *, repairing=False, repair_reason="") -> str:
     price_quotes = re.findall(
         r"(?:每[個份片杯盒人]\s*)?(?:原價|售價)\s*\d+(?:\.\d+)?\s*元?", value.content
     )
@@ -151,6 +168,9 @@ def write_post(value: WritingInput, provider, *, repairing=False) -> str:
         "保留已知數字，不換算、不增加數字。不要寫說明、工具呼叫或 markdown code fence。"
         "價格所指商品與單位必須照原文，不可把每個改為每片或把整份改為每人。"
         "未提預算就不要補預算說明；未提供店名就稱店家，不創造店名。"
+        "口述很短時，用自然邀請與留言聯繫方式補足長度，不新增人數、費用或活動條件。"
+        "只保留口述的餐點與揪人意圖，不自行指定幾份或多少錢。"
+        "不要逐項列出未提供的欄位，不要加編號清單；時間與金額盡量維持原來寫法。"
     )
     if price_quotes:
         prompt += (
@@ -158,6 +178,18 @@ def write_post(value: WritingInput, provider, *, repairing=False) -> str:
             + "；".join(price_quotes)
         )
     if repairing:
+        feedback = {
+            "invalid_format_or_length": (
+                "上一版的 JSON 格式或字數不符，請確保 text 是50到500個非空白字元。"
+            ),
+            "invented_number": "上一版新增了原文沒有的數字，請刪除新增的金額、人數、份數或日期。",
+            "changed_price_unit": (
+                "上一版更改了價格的商品單位，請保留原本的每個、每份或每人等單位。"
+            ),
+            "changed_price_quote": "上一版遺漏或更改原價、售價資訊，請逐字保留指定價格片段。",
+            "invalid_text": "上一版包含無效字元，請只使用正常可顯示的文字。",
+        }.get(repair_reason, "請保留原意並確認格式、字數與數字。")
+        prompt += feedback
         prompt += (
             "上一版未通過內容檢查，請重新寫成保守的邀請文。至少50個非空白字元，"
             "不要換算優惠、每人費用、日期或時間；只逐字保留已提供的數字與價格單位。"
@@ -194,9 +226,20 @@ def write_post(value: WritingInput, provider, *, repairing=False) -> str:
         if "\x00" in result or any(0xD800 <= ord(c) <= 0xDFFF for c in result):
             raise ValueError("invalid_text")
         return result
-    except (ValidationError, ValueError):
+    except (ValidationError, ValueError) as error:
+        reason = "invalid_format_or_length" if isinstance(error, ValidationError) else str(error)
+        if reason not in {
+            "invalid_format_or_length",
+            "invented_number",
+            "changed_price_unit",
+            "changed_price_quote",
+            "invalid_text",
+        }:
+            reason = "invalid_format_or_length"
+        # Codes only: no transcript, generated text, images or account identifiers.
+        logger.info("Post draft validation retry=%s reason=%s", repairing, reason)
         if not repairing:
-            return write_post(value, provider, repairing=True)
+            return write_post(value, provider, repairing=True, repair_reason=reason)
         raise HTTPException(503, "post_writing_invalid_output") from None
     except LocalModelError as error:
         raise HTTPException(503, str(error)) from None
