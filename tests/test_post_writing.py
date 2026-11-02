@@ -27,6 +27,31 @@ def test_draft_preserves_known_numbers_and_uses_structured_output():
     assert write_post(WritingInput(mode="generate", content=text), provider(text)) == text
 
 
+def test_image_writer_repairs_a_description_into_a_group_buy_invitation():
+    description = (
+        "這張圖片呈現美味的薯條，外觀金黃酥脆，旁邊能看見餐點包裝與品牌標誌。"
+        "整體主題明確，讓人感受到輕鬆用餐的氣氛，適合有興趣的同學參考這份餐點內容。"
+    )
+    invitation = (
+        "想找人一起拼單吃薯條！最近很想吃薯條，也想看看有沒有同樣喜歡這款餐點的朋友，"
+        "能一起討論購買與分食。想加入的話歡迎留言或私訊，再一起協調取餐和費用。"
+    )
+    outputs = iter([description, invitation])
+    prompts = []
+
+    def extract(_messages, _schema, prompt):
+        prompts.append(prompt)
+        return json.dumps({"text": next(outputs)})
+
+    result = write_post(
+        WritingInput(mode="generate", content="薯條"),
+        SimpleNamespace(extract=extract),
+        require_invitation=True,
+    )
+    assert result == invitation
+    assert "第一人稱" in prompts[0] and "上一版只是介紹圖片" in prompts[1]
+
+
 @pytest.mark.parametrize(
     "text",
     [

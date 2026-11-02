@@ -114,7 +114,10 @@ def draft_post(value: WritingInput, provider) -> PostDraft:
         }
     )
     try:
-        return PostDraft(text=write_post(text_value, provider), source_text=source)
+        return PostDraft(
+            text=write_post(text_value, provider, require_invitation=value.mode == "image"),
+            source_text=source,
+        )
     except HTTPException as error:
         if error.detail == "post_writing_invalid_output" and value.mode == "voice":
             # Reject the failed model text, but preserve the user's actual words.
@@ -141,16 +144,19 @@ def draft_post(value: WritingInput, provider) -> PostDraft:
         ):
             raise
         text = (
-            "想找人一起討論照片中的商品或優惠資訊。\n照片可辨識的內容：\n"
+            "想揪有相同需求的朋友一起拼單！這次想一起購買或分享的內容是：\n"
             + facts
-            + "\n\n有興趣的朋友可以先留言，一起核對適用品項、活動限制及實際費用，"
+            + "\n\n有人也想一起買或分享嗎？有興趣可以留言或私訊，"
+            "一起核對適用品項、活動限制及實際費用，"
             "再協調時間、地點與取餐分工。照片資訊仍需核對原圖與店家說明，"
             "確認清楚後再決定是否一起參加。"
         )
         return PostDraft(text=text, source_text=source, draft_method="recognized_facts")
 
 
-def write_post(value: WritingInput, provider, *, repairing=False, repair_reason="") -> str:
+def write_post(
+    value: WritingInput, provider, *, repairing=False, repair_reason="", require_invitation=False
+) -> str:
     price_quotes = re.findall(
         r"(?:每[個份片杯盒人]\s*)?(?:原價|售價)\s*\d+(?:\.\d+)?\s*元?", value.content
     )
@@ -172,6 +178,14 @@ def write_post(value: WritingInput, provider, *, repairing=False, repair_reason=
         "只保留口述的餐點與揪人意圖，不自行指定幾份或多少錢。"
         "不要逐項列出未提供的欄位，不要加編號清單；時間與金額盡量維持原來寫法。"
     )
+    if require_invitation:
+        prompt += (
+            "這是圖片建立拼單貼文：辨識結果只是素材，不是要交付的文案。"
+            "將照片的主要食物、商品或品牌視為本人想拼單購買或分享的主題，"
+            "用第一人稱開頭直接揪人，例如『想找人一起拼…』，接著說明已知優惠或一起購買的動機，"
+            "最後自然邀請留言、私訊或加入。不要以『照片中』『這張圖片』『畫面顯示』等影像介紹當主軸。"
+            "不能僅描述外觀、顏色或構圖，也不能把辨識報告貼進貼文；仍不得新增照片沒有的優惠、價格或購買承諾。"
+        )
     if price_quotes:
         prompt += (
             "文案必須完整保留以下原文價格片段，不得省略原價、商品單位或變成優惠售價："
@@ -188,6 +202,10 @@ def write_post(value: WritingInput, provider, *, repairing=False, repair_reason=
             ),
             "changed_price_quote": "上一版遺漏或更改原價、售價資訊，請逐字保留指定價格片段。",
             "invalid_text": "上一版包含無效字元，請只使用正常可顯示的文字。",
+            "not_invitation": (
+                "上一版只是介紹圖片。請改成第一人稱，"
+                "直接邀請大家一起拼單購買、分食或分享已辨識的主題。"
+            ),
         }.get(repair_reason, "請保留原意並確認格式、字數與數字。")
         prompt += feedback
         prompt += (
@@ -212,6 +230,10 @@ def write_post(value: WritingInput, provider, *, repairing=False, repair_reason=
             prompt,
         )
         result = WritingOutput.model_validate_json(output).text
+        if require_invitation and not re.search(
+            r"揪|拼單|一起[買購吃喝訂]|一起.*(?:分食|分享)|想找.*(?:朋友|一起)|有人.*[嗎吗]", result
+        ):
+            raise ValueError("not_invitation")
         known_numbers = set(re.findall(r"\d+(?:\.\d+)?", value.content + " " + value.context))
         if set(re.findall(r"\d+(?:\.\d+)?", result)) - known_numbers:
             raise ValueError("invented_number")
@@ -234,12 +256,19 @@ def write_post(value: WritingInput, provider, *, repairing=False, repair_reason=
             "changed_price_unit",
             "changed_price_quote",
             "invalid_text",
+            "not_invitation",
         }:
             reason = "invalid_format_or_length"
         # Codes only: no transcript, generated text, images or account identifiers.
         logger.info("Post draft validation retry=%s reason=%s", repairing, reason)
         if not repairing:
-            return write_post(value, provider, repairing=True, repair_reason=reason)
+            return write_post(
+                value,
+                provider,
+                repairing=True,
+                repair_reason=reason,
+                require_invitation=require_invitation,
+            )
         raise HTTPException(503, "post_writing_invalid_output") from None
     except LocalModelError as error:
         raise HTTPException(503, str(error)) from None
