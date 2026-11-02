@@ -18,6 +18,7 @@ begin
  insert into public.core_join_requests(id,post_id,requester_id,status,decided_at) values(request_two,post,newcomer,'accepted',clock_timestamp());
  perform set_config('request.jwt.claims',jsonb_build_object('sub',newcomer,'session_id',ns,'role','authenticated')::text,true);
  v:=public.core_chat('messages',jsonb_build_object('post_id',post));
+ assert (v->'post'->>'completed')::boolean=false,'post is not completed before all confirmations';
  assert not exists(select 1 from jsonb_array_elements(v->'messages') m where m->>'id'=old_message::text),'newcomer cannot see prior messages';
  assert exists(select 1 from jsonb_array_elements(v->'messages') m where m->>'event_kind'='joined'),'join event is visible';
  assert core_private.visible_unread(newcomer,post)=0,'previous history is not unread';
@@ -47,6 +48,7 @@ begin
  perform set_config('request.jwt.claims',jsonb_build_object('sub',newcomer,'session_id',ns,'role','authenticated')::text,true);
  v:=public.core_social('handoff',jsonb_build_object('post_id',post));
  assert (v->>'completed')::boolean,'all current members complete order';
+ assert (core_private.post_view(post,newcomer)->>'completed')::boolean,'post representations expose durable completion';
  assert (public.core_social('experience')->>'score')::int=10,'real completion adds ten points';
  perform public.core_social('handoff',jsonb_build_object('post_id',post));
  assert (public.core_social('experience')->>'score')::int=10,'retry cannot duplicate points';
