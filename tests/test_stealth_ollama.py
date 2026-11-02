@@ -63,6 +63,36 @@ def test_requires_explicit_local_only_configuration():
         OllamaDraftProvider(MODEL)
 
 
+@pytest.mark.parametrize("vision", [True, False])
+def test_image_messages_require_verified_vision_and_keep_the_base64_payload(vision):
+    requests = []
+
+    def handle(request):
+        requests.append(request)
+        if request.url.path == "/api/tags":
+            return httpx.Response(200, json=CATALOG)
+        if request.url.path == "/api/show":
+            return httpx.Response(
+                200, json={"capabilities": ["vision"] if vision else ["completion"]}
+            )
+        assert vision and request.url.path == "/api/chat"
+        return httpx.Response(200, json={"done": True, "message": {"content": '{"text":"offer"}'}})
+
+    local = OllamaDraftProvider(
+        MODEL, local_only_confirmed=True, transport=httpx.MockTransport(handle)
+    )
+    messages = [{"role": "user", "content": "read this flyer", "images": ["synthetic-base64"]}]
+    if vision:
+        assert (
+            local.extract(messages, {"type": "object"}, "Only visible facts") == '{"text":"offer"}'
+        )
+        assert json.loads(requests[-1].content)["messages"][-1]["images"] == ["synthetic-base64"]
+    else:
+        with pytest.raises(LocalModelError, match="vision_unavailable"):
+            local.extract(messages, {"type": "object"}, "Only visible facts")
+        assert len(requests) == 2
+
+
 @pytest.mark.parametrize("name", ["large:cloud", "remote-cloud", "", "../ bad", "https://x\n"])
 def test_refuses_cloud_or_invalid_model_names(name):
     with pytest.raises(LocalModelError):

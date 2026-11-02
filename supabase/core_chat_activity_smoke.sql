@@ -20,7 +20,7 @@ begin
     'content','已讀與未讀測試：收到訊息後可以知道真實未讀數量。','tags',jsonb_build_array('未讀測試'),
     'capacity',3,'deadline_at',now()+interval '1 day','price_per_person','50.00',
     'location',jsonb_build_object('name','虛構測試點','latitude',24.987,'longitude',121.576)), 'request_key','activity-smoke-post'));
-  other_post:=public.core_dispatch('create',jsonb_build_object('value',p-array['id','author_id','author_name','author_badge','is_demo','created_at','version','joined','status','my_status','can_edit'],'request_key','activity-smoke-other-post'));
+  other_post:=public.core_dispatch('create',jsonb_build_object('value',p-array['id','author_id','author_name','author_badge','is_demo','created_at','version','joined','status','my_status','can_edit','completed'],'request_key','activity-smoke-other-post'));
   first_message:=public.core_chat('send',jsonb_build_object('post_id',p->>'id','content','第一則訊息','client_key','activity-first-message'));
   second_message:=public.core_chat('send',jsonb_build_object('post_id',other_post->>'id','content','另一個群組','client_key','activity-other-message'));
   begin

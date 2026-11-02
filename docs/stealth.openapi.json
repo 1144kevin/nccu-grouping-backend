@@ -1117,11 +1117,8 @@
             "anyOf": [
               {
                 "type": "string",
-                "enum": [
-                  "east_gate",
-                  "main_gate",
-                  "south_gate"
-                ]
+                "maxLength": 120,
+                "minLength": 1
               },
               {
                 "type": "null"
@@ -1414,11 +1411,8 @@
           },
           "location_id": {
             "type": "string",
-            "enum": [
-              "east_gate",
-              "main_gate",
-              "south_gate"
-            ],
+            "maxLength": 120,
+            "minLength": 1,
             "title": "Location Id"
           },
           "starts_at": {
@@ -1784,11 +1778,8 @@
           },
           "location_id": {
             "type": "string",
-            "enum": [
-              "east_gate",
-              "main_gate",
-              "south_gate"
-            ],
+            "maxLength": 120,
+            "minLength": 1,
             "title": "Location Id"
           },
           "starts_at": {
@@ -1875,6 +1866,21 @@
             "type": "array",
             "maxItems": 4,
             "title": "Roles"
+          },
+          "participation_preference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "receive",
+                  "flexible"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Participation Preference"
           },
           "id": {
             "type": "string",
@@ -1957,11 +1963,8 @@
           },
           "location_id": {
             "type": "string",
-            "enum": [
-              "east_gate",
-              "main_gate",
-              "south_gate"
-            ],
+            "maxLength": 120,
+            "minLength": 1,
             "title": "Location Id"
           },
           "starts_at": {
@@ -2048,6 +2051,21 @@
             "type": "array",
             "maxItems": 4,
             "title": "Roles"
+          },
+          "participation_preference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "receive",
+                  "flexible"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Participation Preference"
           }
         },
         "additionalProperties": false,

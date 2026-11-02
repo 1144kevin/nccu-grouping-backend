@@ -69,6 +69,8 @@ class OllamaDraftProvider:
                 return value
         except httpx.TimeoutException as exc:
             raise LocalModelError("local_model_timeout") from exc
+        except httpx.ConnectError as exc:
+            raise LocalModelError("local_model_unavailable") from exc
         except (httpx.HTTPError, ValueError, UnicodeError) as exc:
             raise LocalModelError("invalid_local_model_response") from exc
 
@@ -117,6 +119,24 @@ class OllamaDraftProvider:
         finally:
             MODEL_SLOT.release()
 
+    def extract_writing(self, messages: list[dict], schema: dict, prompt: str) -> str:
+        """Bound each writing attempt so recognition plus one repair fits the UI timeout."""
+        if not MODEL_SLOT.acquire():
+            raise LocalModelError("local_model_busy")
+        try:
+            return self._chat(messages, schema, prompt, limit=60, tokens=1536, context=8192)
+        finally:
+            MODEL_SLOT.release()
+
+    def extract_images(self, messages: list[dict], schema: dict, prompt: str) -> str:
+        """One bounded vision call for the entire selected album."""
+        if not MODEL_SLOT.acquire():
+            raise LocalModelError("local_model_busy")
+        try:
+            return self._chat(messages, schema, prompt, limit=120, tokens=2048, context=16384)
+        finally:
+            MODEL_SLOT.release()
+
     def _chat(self, messages, schema, prompt, *, limit=20, tokens=512, context=4096) -> str:
         with httpx.Client(
             base_url=BASE_URL,
@@ -148,6 +168,10 @@ class OllamaDraftProvider:
             details = selected.get("details")
             if not isinstance(details, dict) or details.get("format") != "gguf":
                 raise LocalModelError("local_model_format_unverified")
+            if any(message.get("images") for message in messages):
+                info = self._json_request(client, "POST", "/api/show", json={"model": self.model})
+                if "vision" not in info.get("capabilities", []):
+                    raise LocalModelError("local_model_vision_unavailable")
             result = self._json_request(
                 client,
                 "POST",

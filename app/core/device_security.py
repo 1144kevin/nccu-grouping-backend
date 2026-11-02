@@ -17,8 +17,10 @@ class DeviceSecurity:
         self.quota = WindowQuota(max_keys=64)
         prefix = settings.api_v1_prefix + "/stealth-cloud"
         self.ai_paths = {
+            settings.api_v1_prefix + "/ai/post-writing",
             settings.api_v1_prefix + "/recommendations/semantic",
             prefix + "/quick-start",
+            prefix + "/quick-interview",
             prefix + "/intake",
             prefix + "/matches/semantic",
             prefix + "/matches/discover",
@@ -62,7 +64,10 @@ class DeviceSecurity:
         if not self.quota.allow(("all", peer), 240):
             await deny(429, "too_many_requests")
             return
-        if scope["path"] not in self.ai_paths:
+        dynamic_reply = scope["path"].startswith(
+            self.settings.api_v1_prefix + "/stealth-cloud/matches/"
+        ) and scope["path"].endswith("/reply-suggestions")
+        if scope["path"] not in self.ai_paths and not dynamic_reply:
             await self.app(scope, receive, send)
             return
         if not self.settings.core_device_ai_enabled:
@@ -79,18 +84,20 @@ class DeviceSecurity:
             length = int(request.headers.get("content-length", "0"))
         except ValueError:
             length = -1
-        if length < 0 or length > 32_768:
+        # A selected photo is bounded base64; other AI routes remain text-only.
+        limit = 30 * 1024 * 1024 if scope["path"].endswith("/ai/post-writing") else 32_768
+        if length < 0 or length > limit:
             await deny(413, "request_body_too_large")
             return
         body = bytearray()
         try:
-            async with asyncio.timeout(10):
+            async with asyncio.timeout(90 if scope["path"].endswith("/ai/post-writing") else 10):
                 while True:
                     message = await receive()
                     if message["type"] == "http.disconnect":
                         return
                     body.extend(message.get("body", b""))
-                    if len(body) > 32_768:
+                    if len(body) > limit:
                         await deny(413, "request_body_too_large")
                         return
                     if not message.get("more_body", False):

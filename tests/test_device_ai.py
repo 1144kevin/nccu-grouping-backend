@@ -41,10 +41,13 @@ def test_device_ai_opt_in_is_explicit_and_never_inherited():
     "path",
     [
         "/api/v1/stealth-cloud/quick-start",
+        "/api/v1/stealth-cloud/quick-interview",
+        "/api/v1/stealth-cloud/matches/00000000-0000-0000-0000-000000000001/reply-suggestions",
         "/api/v1/stealth-cloud/intake",
         "/api/v1/stealth-cloud/matches/semantic",
         "/api/v1/stealth-cloud/matches/discover",
         "/api/v1/recommendations/semantic",
+        "/api/v1/ai/post-writing",
     ],
 )
 async def test_device_ai_boundary_rejects_before_inference(path):
@@ -59,7 +62,12 @@ async def test_device_ai_boundary_rejects_before_inference(path):
     async with httpx.AsyncClient(transport=transport, base_url="https://192.168.1.10:8443") as c:
         assert (await c.post(path, json={})).status_code == 401
         assert (
-            await c.post(path, headers={"Authorization": "Bearer fake"}, content=b"x" * 32769)
+            await c.post(
+                path,
+                headers={"Authorization": "Bearer fake"},
+                content=b"x"
+                * ((30 * 1024 * 1024 if path.endswith("/post-writing") else 32768) + 1),
+            )
         ).status_code == 413
         assert (await c.post(path, headers={"X-Forwarded-For": "127.0.0.1"})).status_code == 403
         assert not calls
@@ -84,10 +92,12 @@ async def test_device_ai_boundary_rejects_before_inference(path):
     "path",
     [
         "/api/v1/stealth-cloud/quick-start",
+        "/api/v1/stealth-cloud/quick-interview",
         "/api/v1/stealth-cloud/intake",
         "/api/v1/stealth-cloud/matches/semantic",
         "/api/v1/stealth-cloud/matches/discover",
         "/api/v1/recommendations/semantic",
+        "/api/v1/ai/post-writing",
     ],
 )
 async def test_device_ai_disabled_but_manual_flow_is_available(path):

@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     core_supabase_enabled: bool = False
     # Enable only after adding the exact native callback to the development Auth allowlist.
     core_google_ios_enabled: bool = False
+    # Exact HTTPS callback for the public web gateway; browser input cannot override it.
+    core_google_public_web_callback: str = ""
     core_email_redirect_url: str = ""
     core_media_enabled: bool = False
     core_media_signing_key: SecretStr = SecretStr("")
@@ -56,6 +58,10 @@ class Settings(BaseSettings):
     stealth_ollama_local_only_confirmed: bool = False
     stealth_semantic_enabled: bool = False
     stealth_embedding_model: str = "qwen3-embedding:0.6b"
+    # Separate opt-in: only the guided conversation may leave this server.
+    stealth_conversation_provider: Literal["local", "gemini"] = "local"
+    stealth_gemini_model: Literal["gemini-3.5-flash-lite"] = "gemini-3.5-flash-lite"
+    stealth_gemini_api_key: SecretStr = SecretStr("")
 
     model_config = SettingsConfigDict(
         env_file=".env",

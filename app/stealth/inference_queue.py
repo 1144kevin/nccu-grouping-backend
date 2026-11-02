@@ -6,7 +6,7 @@ from collections import deque
 
 
 class InferenceQueue:
-    def __init__(self, max_waiting=2, wait_seconds=5.0):
+    def __init__(self, max_waiting=8, wait_seconds=90.0):
         self.max_waiting, self.wait_seconds = max_waiting, wait_seconds
         self.condition = threading.Condition()
         self.active = False

@@ -69,6 +69,7 @@ def money_supported(value: int, quote: str, *, basis: str = "amount") -> bool:
     if basis == "budget":
         pattern = (
             rf"(?:預算|上限|最多|不超過){gap}({NUMBER})|({NUMBER})\s*(?:元|塊)?\s*(?:以內|以下)"
+            rf"|(?:我)?(?:可以|願意|能夠|能)\s*(?:付|出|支付|負擔)\s*(?:NT\$|TWD|\$)?\s*({NUMBER})"
         )
     elif basis == "cost":
         pattern = rf"(?:每人|每個人|一人|人均|每份|一份){gap}({NUMBER})"
@@ -81,6 +82,33 @@ def money_supported(value: int, quote: str, *, basis: str = "amount") -> bool:
         if item and not re.search(r"(?:不是|非|並非|不只)\s*$", quote[: match.start(group)])
     ]
     return value in amounts
+
+
+def explicit_budget(original: str):
+    """Recover a stated budget, including spoken '我可以付$200', never a price/fee."""
+    found = None
+    for clause in re.split(r"[，。；\n]", original):
+        if not re.search(
+            r"預算|上限|最多|不超過|(?:可以|願意|能夠|能)\s*(?:付|出|支付|負擔)", clause
+        ):
+            continue
+        if re.search(r"未知|不知道|不確定|還沒決定|再說|沒有上限|不限預算", clause):
+            found = None
+            continue
+        if re.search(FOREIGN_CURRENCY, clause, re.IGNORECASE) or re.search(
+            r"朋友|同學|室友|對方|他們|她們|(?:他|她)的|如果|假如|假設|不是|不要|不能|沒辦法|[?？]|多付|跑腿費|加價",
+            clause,
+        ):
+            continue
+        for token in re.findall(NUMBER, clause):
+            amount = integer(token)
+            if (
+                amount is not None
+                and 0 <= amount <= 100000
+                and money_supported(amount, clause, basis="budget")
+            ):
+                found = (amount, clause[:160])
+    return found
 
 
 def minutes_supported(value: int, quote: str, *, start: bool) -> bool:

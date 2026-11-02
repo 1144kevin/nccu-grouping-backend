@@ -1,14 +1,27 @@
 from typing import Annotated, Literal
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from fastapi.responses import StreamingResponse
 from pydantic import Field, field_validator
 
+from app.core.cloud_security import WindowQuota
 from app.core.config import get_settings
+from app.core_cloud.conversation import ConversationInput, ConversationResult, converse
 from app.core_cloud.discovery import discover
+from app.core_cloud.gemini_conversation import GeminiDialogue
 from app.core_cloud.intake import IntakeRequest, IntakeResult
-from app.core_cloud.quick_stealth import QuickResult, QuickStart
+from app.core_cloud.quick_stealth import QuickInterview, QuickResult, QuickStart
+from app.core_cloud.quick_stealth import interview as quick_interview
 from app.core_cloud.quick_stealth import start as quick_start
+from app.core_cloud.reply_speech import SpeechInput, stream_speech, synthesize
+from app.core_cloud.reply_suggestions import (
+    ReplyRequest,
+    ReplyResult,
+    context_key,
+    snapshot,
+    suggest,
+)
 from app.core_cloud.semantic import SemanticCloudMatches, SemanticRequest, semantic_cloud_matches
 from app.core_cloud.stealth import (
     CloudAgent,
@@ -50,7 +63,7 @@ Cloud = Annotated[CloudStealth, Depends(cloud)]
 
 
 @router.get("/quick-status")
-def quick_status(service: Cloud):
+def quick_status(service: Cloud, request: Request):
     try:
         service.store._request(
             "POST",
@@ -65,16 +78,50 @@ def quick_status(service: Cloud):
         if error.status_code != 503:
             raise
         return {"ready": False}
-    return {"ready": True}
+    settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    return {
+        "ready": True,
+        "conversation_provider": settings.stealth_conversation_provider,
+        "conversation_configured": settings.stealth_conversation_provider != "gemini"
+        or bool(settings.stealth_gemini_api_key.get_secret_value().strip()),
+    }
 
 
 @router.post("/quick-start", response_model=QuickResult)
 def start_quick(
     value: QuickStart,
     service: Cloud,
+    request: Request,
+    user: UserDep,
     key: Annotated[str, Header(alias="Idempotency-Key", min_length=12, max_length=100)],
 ):
-    settings = get_settings()
+    settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    interpreter = None
+    if (
+        value.confirmed_signal is None
+        and settings.environment == "local"
+        and settings.stealth_ai_provider == "ollama_local"
+    ):
+        interpreter = OllamaIntentInterpreter(
+            OllamaDraftProvider(
+                settings.stealth_ollama_model,
+                local_only_confirmed=settings.stealth_ollama_local_only_confirmed,
+            )
+        )
+    result = quick_start(service, value, key, interpreter=interpreter)
+    watch = getattr(request.app.state, "stealth_watch", None)
+    if watch is not None:
+        watch.subscribe(str(user.id), service)
+    return result
+
+
+@router.post("/conversation", response_model=ConversationResult)
+def conversation(value: ConversationInput, service: Cloud, request: Request, user: UserDep):
+    settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    if settings.stealth_conversation_provider == "gemini":
+        return converse(
+            service, value, dialogue=GeminiDialogue(settings.stealth_gemini_api_key, str(user.id))
+        )
     interpreter = None
     if settings.environment == "local" and settings.stealth_ai_provider == "ollama_local":
         interpreter = OllamaIntentInterpreter(
@@ -83,7 +130,48 @@ def start_quick(
                 local_only_confirmed=settings.stealth_ollama_local_only_confirmed,
             )
         )
-    return quick_start(service, value, key, interpreter=interpreter)
+    try:
+        return converse(service, value, interpreter=interpreter)
+    except LocalModelError as error:
+        raise HTTPException(503, str(error)) from None
+
+
+@router.post("/speech")
+def reply_speech(value: SpeechInput, request: Request, user: UserDep, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    if settings.stealth_conversation_provider != "gemini":
+        raise HTTPException(503, "stealth_gemini_not_configured")
+    return synthesize(value, settings.stealth_gemini_api_key, str(user.id))
+
+
+@router.post("/speech-stream")
+def reply_speech_stream(value: SpeechInput, request: Request, user: UserDep):
+    settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    if settings.stealth_conversation_provider != "gemini":
+        raise HTTPException(503, "stealth_gemini_not_configured")
+    return StreamingResponse(
+        stream_speech(value, settings.stealth_gemini_api_key, str(user.id)),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.post("/quick-interview", response_model=QuickInterview)
+def interview_quick(value: IntakeRequest, service: Cloud, request: Request):
+    settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    interpreter = None
+    if settings.environment == "local" and settings.stealth_ai_provider == "ollama_local":
+        interpreter = OllamaIntentInterpreter(
+            OllamaDraftProvider(
+                settings.stealth_ollama_model,
+                local_only_confirmed=settings.stealth_ollama_local_only_confirmed,
+            )
+        )
+    try:
+        return quick_interview(service, value, interpreter=interpreter)
+    except LocalModelError as error:
+        raise HTTPException(503, str(error)) from None
 
 
 class CoordinationMessage(StrictModel):
@@ -110,6 +198,45 @@ def room_rpc(service, action, args):
 @router.get("/matches/{proposal_id}/room")
 def coordination_room(proposal_id: UUID, service: Cloud):
     return room_rpc(service, "state", {"proposal_id": str(proposal_id)})
+
+
+reply_quota = WindowQuota(max_keys=1024)
+
+
+def reply_context(service, proposal_id):
+    room = room_rpc(service, "state", {"proposal_id": str(proposal_id)})
+    if not room.get("opened") or not room.get("can_send"):
+        raise HTTPException(409, "stealth_room_read_only")
+    match = next((m for m in service.matches().items if m.id == proposal_id), None)
+    if match is None or match.status == "unavailable":
+        raise HTTPException(404, "stealth_match_unavailable")
+    return snapshot(match, room)
+
+
+@router.post("/matches/{proposal_id}/reply-suggestions", response_model=ReplyResult)
+def reply_suggestions(
+    proposal_id: UUID, value: ReplyRequest, service: Cloud, request: Request, user: UserDep
+):
+    context = reply_context(service, proposal_id)
+    if not reply_quota.allow(("stealth-reply", str(user.id)), 12):
+        raise HTTPException(429, "stealth_reply_rate_limit")
+    settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    provider = None
+    if (
+        settings.environment == "local"
+        and not settings.core_cloud_enabled
+        and settings.stealth_ai_provider == "ollama_local"
+        and settings.stealth_ollama_local_only_confirmed
+    ):
+        try:
+            provider = OllamaDraftProvider(settings.stealth_ollama_model, local_only_confirmed=True)
+        except LocalModelError:
+            pass
+    result = suggest(context, value.batch, provider, value.previous)
+    # Recheck access and snapshot after potentially slow model inference.
+    if context_key(reply_context(service, proposal_id)) != result.context_key:
+        raise HTTPException(409, "stealth_reply_context_changed")
+    return result
 
 
 @router.post("/matches/{proposal_id}/room", status_code=201)
@@ -146,8 +273,15 @@ def agent(service: Cloud):
 
 
 @router.put("/agent", response_model=CloudAgent)
-def save_agent(value: CloudAgentInput, service: Cloud):
-    return service.save_agent(value)
+def save_agent(value: CloudAgentInput, service: Cloud, request: Request, user: UserDep):
+    result = service.save_agent(value)
+    watch = getattr(request.app.state, "stealth_watch", None)
+    if watch is not None:
+        if result.enabled:
+            watch.subscribe(str(user.id), service)
+        else:
+            watch.unsubscribe(str(user.id))
+    return result
 
 
 @router.post("/draft", response_model=DraftOutput)
@@ -181,8 +315,12 @@ def create_signal(
 
 
 @router.get("/signals", response_model=CloudSignals)
-def signals(service: Cloud):
-    return service.signals()
+def signals(service: Cloud, request: Request, user: UserDep):
+    result = service.signals()
+    watch = getattr(request.app.state, "stealth_watch", None)
+    if watch is not None and any(s.status == "active" for s in result.items):
+        watch.subscribe(str(user.id), service)
+    return result
 
 
 @router.delete("/signals/{signal_id}", response_model=Signal)

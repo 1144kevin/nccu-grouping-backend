@@ -1,12 +1,72 @@
+from datetime import UTC, datetime
 from unittest.mock import patch
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from fastapi import HTTPException
 
+from app.core_cloud.intake import IntakeFacts
+from app.core_cloud.quick_stealth import QuickInterview
+from app.stealth.ollama import LocalModelError
 from tests.test_stealth_cloud import HEADERS, ROOT
 from tests.test_stealth_cloud import cloud_api as _cloud_api
 
 cloud_api = _cloud_api
+
+
+def test_optional_interview_requires_auth_and_only_reads_the_owners_context(cloud_api):
+    client, store, _ = cloud_api
+    path = ROOT + "/quick-interview"
+    assert client.post(path, json={"turns": ["我有披薩優惠券"]}).status_code == 401
+    result = QuickInterview(
+        facts=IntakeFacts(title="披薩優惠券", category="pizza"),
+        signal=None,
+        sources=[],
+        questions=[],
+        interpretation="keyword_fallback",
+    )
+    with patch("app.api.routes.stealth_cloud.quick_interview", return_value=result) as analyze:
+        response = client.post(
+            path, json={"turns": ["我有披薩優惠券", "東側門，預算120"]}, headers=HEADERS
+        )
+        assert response.status_code == 200 and response.headers["cache-control"] == "no-store"
+        assert analyze.call_args.args[0].store.token == "synthetic-user-access"
+        assert analyze.call_args.args[1].turns == ["我有披薩優惠券", "東側門，預算120"]
+        store._request.assert_not_called()
+    for turns in ([], [" "], ["x" * 1001], ["x"] * 9, ["x" * 1000] * 5):
+        assert client.post(path, json={"turns": turns}, headers=HEADERS).status_code == 422
+    with patch(
+        "app.api.routes.stealth_cloud.quick_interview",
+        side_effect=LocalModelError("local_model_busy"),
+    ):
+        response = client.post(path, json={"turns": ["想吃披薩"]}, headers=HEADERS)
+        assert response.status_code == 503 and response.json()["detail"] == "local_model_busy"
+
+
+def test_confirmed_chat_payload_passes_through_the_authenticated_quick_start(cloud_api):
+    from app.core_cloud.quick_stealth import prepare
+
+    client, store, _ = cloud_api
+    signal = prepare("我有披薩優惠券", [], now=datetime.now(UTC))[0]
+    with patch(
+        "app.api.routes.stealth_cloud.quick_start",
+        side_effect=HTTPException(409, "agent_not_enabled"),
+    ) as start:
+        response = client.post(
+            ROOT + "/quick-start",
+            json={"text": signal.title, "confirmed_signal": signal.model_dump(mode="json")},
+            headers={**HEADERS, "Idempotency-Key": "confirmed-key-12345"},
+        )
+        assert response.status_code == 409
+        assert start.call_args.args[1].confirmed_signal == signal
+        assert not start.call_args.args[1].activate_agent
+    assert (
+        client.post(
+            ROOT + "/quick-start",
+            json={"text": "不同的標題", "confirmed_signal": signal.model_dump(mode="json")},
+            headers={**HEADERS, "Idempotency-Key": "confirmed-key-12345"},
+        ).status_code
+        == 422
+    )
 
 
 def test_quick_status_is_readonly_and_reports_an_unavailable_migration(cloud_api):

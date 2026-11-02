@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from functools import lru_cache
 from typing import Any
 from urllib.parse import urlencode
 from uuid import UUID
@@ -36,6 +37,17 @@ from app.core_local.schemas import (
 PROJECT_URL = "https://axdwbfhrkbovgrbngrrh.supabase.co"
 
 
+@lru_cache(maxsize=1)
+def shared_http_client() -> httpx.Client:
+    # Credentials stay on each request; never mutate headers on the shared pool.
+    return httpx.Client(
+        timeout=15,
+        trust_env=False,
+        follow_redirects=False,
+        limits=httpx.Limits(max_connections=24, max_keepalive_connections=12),
+    )
+
+
 class SupabaseCoreStore:
     def __init__(self, settings: Settings, token: str | None = None):
         # Explicitly scope this development adapter to the authorized project.
@@ -52,8 +64,9 @@ class SupabaseCoreStore:
         if token:
             headers["Authorization"] = f"Bearer {token}"
         try:
-            with httpx.Client(timeout=15, trust_env=False, follow_redirects=False) as client:
-                response = client.request(method, PROJECT_URL + path, headers=headers, json=body)
+            response = shared_http_client().request(
+                method, PROJECT_URL + path, headers=headers, json=body
+            )
         except httpx.HTTPError:
             raise HTTPException(503, "supabase_unavailable") from None
         if response.status_code >= 400:
@@ -69,6 +82,8 @@ class SupabaseCoreStore:
             if not isinstance(code, str) or not code:
                 code = data.get("error_code", "")
             if path == "/auth/v1/user" and response.status_code in (401, 403):
+                raise HTTPException(401, "invalid_or_expired_session")
+            if code in ("session_not_found", "bad_jwt", "PGRST301", "PGRST303"):
                 raise HTTPException(401, "invalid_or_expired_session")
             if isinstance(code, str) and code.startswith("PT") and code[2:].isdigit():
                 status = int(code[2:])
@@ -204,8 +219,8 @@ class SupabaseCoreStore:
         )
 
     def authenticate(self, token: str) -> ProfileView:
-        # Auth server verifies signature/expiry; RPC additionally checks live session ownership.
-        self._request("GET", "/auth/v1/user", token=token)
+        # PostgREST verifies JWT signature/expiry before dispatch; 'me' also checks
+        # the live auth.sessions row and account status. No second Auth roundtrip.
         return ProfileView.model_validate(self._rpc("me", token=token))
 
     def logout(self, token: str) -> None:
@@ -222,7 +237,9 @@ class SupabaseCoreStore:
         )
 
     def update_profile(self, actor: UUID, value: ProfileInput) -> ProfileView:
-        return ProfileView.model_validate(self._rpc("profile", value.model_dump(mode="json")))
+        return ProfileView.model_validate(
+            self._rpc("profile", value.model_dump(mode="json", exclude_unset=True))
+        )
 
     def posts(
         self,

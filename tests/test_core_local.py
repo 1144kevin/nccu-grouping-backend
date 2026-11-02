@@ -222,6 +222,7 @@ def test_public_profile_has_no_private_fields_and_filters_posts_by_id(core_api):
         "badge",
         "created_at",
         "active_posts",
+        "level",
     }
     assert response.json()["display_name"] == "相同名稱" and response.json()["active_posts"] == 1
     assert [

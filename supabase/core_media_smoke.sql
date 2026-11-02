@@ -34,17 +34,14 @@ begin
  exception when sqlstate 'PT404' then null; end;
  assert not core_private.media_access('select',a.user_id::text||'/'||(asset->>'id')||'.jpg');
  perform set_config('request.jwt.claims',jsonb_build_object('sub',a.user_id,'session_id',a.session_id,'role','authenticated')::text,true);
- for i in 2..20 loop
+ for i in 2..21 loop
   perform public.core_media('reserve',request||jsonb_build_object('request_key','media-transaction-quota-'||i));
  end loop;
- assert jsonb_array_length(public.core_media('list')->'items')=20;
- begin
-  perform public.core_media('reserve',request||jsonb_build_object('request_key','media-transaction-quota-overflow')); raise exception 'per-owner quota exceeded';
- exception when sqlstate 'PT409' then null; end;
- -- Retry works at quota; an absent object can release its own reservation.
+ assert jsonb_array_length(public.core_media('list')->'items')=21;
+ -- Count limits are removed; retries and reservation deletion still work.
  assert public.core_media('reserve',request)->>'id'=asset->>'id';
  assert (public.core_media('delete_finish',jsonb_build_object('image_id',asset->>'id'))->>'deleted')::boolean;
- assert jsonb_array_length(public.core_media('list')->'items')=19;
+ assert jsonb_array_length(public.core_media('list')->'items')=20;
  assert not has_function_privilege('anon','public.core_media(text,jsonb)','EXECUTE');
  assert not has_table_privilege('authenticated','public.core_media_assets','SELECT');
  assert not has_table_privilege('authenticated','core_private.media_signing_keys','SELECT');

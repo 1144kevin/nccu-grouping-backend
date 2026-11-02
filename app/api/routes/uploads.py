@@ -3,7 +3,7 @@ import binascii
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
@@ -12,6 +12,8 @@ from app.core_cloud.images import normalize_image
 from app.core_cloud.media import (
     AssetView,
     DraftAssets,
+    ImageContent,
+    ImageEdit,
     ImagePublish,
     ImageUpload,
     ImageURL,
@@ -63,6 +65,22 @@ async def upload_image(request: Request, service: Media, key: Key):
 @router.post("/publish", response_model=PostView, status_code=201)
 def publish_with_image(value: ImagePublish, service: Media, key: Key):
     return service.publish(value, key)
+
+
+@router.put("/posts/{post_id}", response_model=PostView)
+def edit_with_images(post_id: UUID, value: ImageEdit, service: Media):
+    return service.edit(post_id, value)
+
+
+@router.get("/images/{image_id}/content", response_model=ImageContent)
+def image_content(image_id: UUID, service: Media, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    asset = service.rpc("read", {"image_id": str(image_id)})
+    return ImageContent(
+        content_base64=base64.b64encode(service._download(asset["object_path"])).decode("ascii"),
+        width=asset["width"],
+        height=asset["height"],
+    )
 
 
 @router.get("/images", response_model=DraftAssets)

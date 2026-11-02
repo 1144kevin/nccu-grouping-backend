@@ -21,7 +21,7 @@ begin
   other_post:=public.core_dispatch('create',jsonb_build_object('value',value,'request_key','public-second-post'));
   public_profile:=public.core_public_user('profile',jsonb_build_object('user_id',first_user.user_id));
   assert public_profile->>'display_name'='同名測試' and (public_profile->>'active_posts')::integer=1,'real public fields';
-  assert public_profile-array['id','display_name','bio','badge','created_at','active_posts']='{}'::jsonb,'no private email or auth fields';
+  assert public_profile-array['id','display_name','bio','badge','created_at','active_posts','level']='{}'::jsonb,'no private email or auth fields';
   value:=public.core_public_user('posts',jsonb_build_object('user_id',first_user.user_id));
   assert jsonb_array_length(value->'items')=1 and value->'items'->0->>'id'=p->>'id','same-name authors kept separate by UUID';
   assert value->'items'->0->>'my_status'='none','membership uses viewer identity';

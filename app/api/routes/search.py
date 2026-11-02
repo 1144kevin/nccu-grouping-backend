@@ -2,7 +2,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Query
-from pydantic import AwareDatetime, BaseModel
+from pydantic import AwareDatetime, BaseModel, Field
 
 from app.api.routes.engagement import EngagementDep
 
@@ -10,6 +10,8 @@ router = APIRouter(prefix="/search", tags=["search"])
 
 
 class SearchItem(BaseModel):
+    level: int = Field(default=1, ge=1, le=5)
+    badge: str = "🍱"
     id: UUID
     kind: Literal["user", "message", "history"]
     title: str

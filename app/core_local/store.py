@@ -84,6 +84,7 @@ class CoreStore:
                 ("bio", "TEXT NOT NULL DEFAULT ''"),
                 ("badge", "TEXT NOT NULL DEFAULT '🍱'"),
                 ("version", "INTEGER NOT NULL DEFAULT 1"),
+                ("profile_setup_required", "INTEGER NOT NULL DEFAULT 0"),
             ):
                 if name not in columns:
                     db.execute(f"ALTER TABLE core_users ADD COLUMN {name} {declaration}")
@@ -119,7 +120,8 @@ class CoreStore:
             user_id = str(uuid4())
             db.execute(
                 """INSERT INTO core_users
-                (id,email,display_name,salt,password_hash,created_at) VALUES (?,?,?,?,?,?)""",
+                (id,email,display_name,salt,password_hash,created_at,profile_setup_required)
+                VALUES (?,?,?,?,?,?,1)""",
                 (user_id, value.email, value.display_name, salt, digest, utc_now().isoformat()),
             )
             return self._session(db, user_id)
@@ -180,7 +182,8 @@ class CoreStore:
     def update_profile(self, actor: UUID, value: ProfileInput) -> ProfileView:
         with self.transaction() as db:
             result = db.execute(
-                """UPDATE core_users SET display_name=?,bio=?,badge=?,version=version+1
+                """UPDATE core_users SET display_name=?,bio=?,badge=?,version=version+1,
+                profile_setup_required=0
                 WHERE id=? AND version=?""",
                 (value.display_name, value.bio, value.badge, str(actor), value.expected_version),
             )

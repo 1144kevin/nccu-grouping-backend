@@ -27,7 +27,9 @@ class NormalizedImage:
 def normalize_image(content: bytes) -> NormalizedImage:
     if not content or len(content) > MAX_INPUT_BYTES:
         raise HTTPException(413, "image_too_large")
-    if not IMAGE_SLOTS.acquire(blocking=False):
+    # Keep two decoders, but allow a small concurrent album burst to wait its
+    # turn instead of failing while the other images finish within milliseconds.
+    if not IMAGE_SLOTS.acquire(timeout=10):
         raise HTTPException(429, "image_processing_busy")
     try:
         with warnings.catch_warnings():

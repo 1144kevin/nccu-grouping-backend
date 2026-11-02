@@ -9,7 +9,7 @@ from uuid import UUID
 
 import httpx
 from fastapi import HTTPException
-from pydantic import AwareDatetime, BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field, model_validator
 
 from app.core.config import get_settings
 from app.core_cloud.images import MAX_OUTPUT_BYTES, NormalizedImage
@@ -41,8 +41,29 @@ class DraftAssets(BaseModel):
 
 
 class ImagePublish(StrictModel):
-    image_id: UUID
+    image_id: UUID | None = None
+    image_ids: list[UUID] | None = Field(default=None, min_length=1, max_length=5)
     value: PostInput
+
+    @model_validator(mode="after")
+    def valid_album(self):
+        if (self.image_id is None) == (self.image_ids is None):
+            raise ValueError("choose_one_image_input")
+        if self.image_ids is not None and len(set(self.image_ids)) != len(self.image_ids):
+            raise ValueError("duplicate_images")
+        return self
+
+
+class ImageEdit(StrictModel):
+    value: PostInput
+    image_ids: list[UUID] = Field(max_length=5)
+    expected_version: int = Field(ge=1, strict=True)
+
+    @model_validator(mode="after")
+    def distinct_images(self):
+        if len(set(self.image_ids)) != len(self.image_ids):
+            raise ValueError("duplicate_images")
+        return self
 
 
 class ImageURL(BaseModel):
@@ -53,7 +74,15 @@ class ImageURL(BaseModel):
     height: int
 
 
+class ImageContent(BaseModel):
+    content_base64: str
+    width: int
+    height: int
+
+
 class MediaService:
+    bucket = BUCKET
+
     def __init__(self, store: SupabaseCoreStore, owner_id: UUID, *, transport=None):
         settings = get_settings()
         key = settings.core_media_signing_key.get_secret_value()
@@ -106,7 +135,7 @@ class MediaService:
         try:
             with self._client() as client:
                 result = client.post(
-                    f"/storage/v1/object/{BUCKET}/{path}",
+                    f"/storage/v1/object/{self.bucket}/{path}",
                     content=content,
                     headers={
                         "Content-Type": "image/jpeg",
@@ -137,7 +166,7 @@ class MediaService:
                 self._client() as client,
                 client.stream(
                     "GET",
-                    f"/storage/v1/object/authenticated/{BUCKET}/{path}",
+                    f"/storage/v1/object/authenticated/{self.bucket}/{path}",
                     headers={"Accept-Encoding": "identity"},
                 ) as response,
             ):
@@ -184,19 +213,35 @@ class MediaService:
     def publish(self, value: ImagePublish, key: str) -> PostView:
         return PostView.model_validate(
             self.rpc(
-                "publish",
+                "publish_many" if value.image_ids is not None else "publish",
                 {
-                    "image_id": str(value.image_id),
+                    **(
+                        {"image_ids": [str(i) for i in value.image_ids]}
+                        if value.image_ids is not None
+                        else {"image_id": str(value.image_id)}
+                    ),
                     "value": value.value.model_dump(mode="json"),
                     "request_key": key,
                 },
             )
         )
 
+    def edit(self, post_id: UUID, value: ImageEdit) -> PostView:
+        return PostView.model_validate(
+            self.store._request(
+                "POST",
+                "/rest/v1/rpc/core_edit_post_media",
+                body={"args": {"post_id": str(post_id), **value.model_dump(mode="json")}},
+                token=self.store.token,
+            )
+        )
+
     def url(self, image_id: UUID) -> ImageURL:
         asset = self.rpc("read", {"image_id": str(image_id)})
         result = self._storage_json(
-            "POST", f"/storage/v1/object/sign/{BUCKET}/{asset['object_path']}", {"expiresIn": 60}
+            "POST",
+            f"/storage/v1/object/sign/{self.bucket}/{asset['object_path']}",
+            {"expiresIn": 60},
         )
         signed = result.get("signedURL") if isinstance(result, dict) else None
         if not isinstance(signed, str):
@@ -210,7 +255,7 @@ class MediaService:
             or parsed.username
             or parsed.password
             or parsed.fragment
-            or parsed.path != f"/storage/v1/object/sign/{BUCKET}/{asset['object_path']}"
+            or parsed.path != f"/storage/v1/object/sign/{self.bucket}/{asset['object_path']}"
             or len(query.get("token", [])) != 1
             or len(query["token"][0]) > 4096
         ):
@@ -223,6 +268,6 @@ class MediaService:
     def delete(self, image_id: UUID):
         asset = self.rpc("delete_prepare", {"image_id": str(image_id)})
         self._storage_json(
-            "DELETE", f"/storage/v1/object/{BUCKET}", {"prefixes": [asset["object_path"]]}
+            "DELETE", f"/storage/v1/object/{self.bucket}", {"prefixes": [asset["object_path"]]}
         )
         return self.rpc("delete_finish", {"image_id": str(image_id)})

@@ -58,6 +58,8 @@ class AppPasswordInput(BaseModel):
 
 
 class ProfileView(BaseModel):
+    avatar_id: UUID | None = None
+    profile_setup_required: bool = False
     deletion_pending: bool = False
     id: UUID
     email: str
@@ -71,6 +73,7 @@ class ProfileView(BaseModel):
 
 
 class ProfileInput(Input):
+    avatar_id: UUID | None = None
     display_name: str = Field(min_length=1, max_length=40)
     bio: str = Field(max_length=160)
     badge: Literal["🍜", "🥐", "🍕", "🧋", "🍱", "🍍"]
@@ -110,11 +113,14 @@ class MessageInput(Input):
 
 
 class MessageView(BaseModel):
+    event_kind: Literal["joined", "left", "completed"] | None = None
+    image_id: UUID | None = None
     id: UUID
     post_id: UUID
     sender_id: UUID
     sender_name: str
     sender_badge: str
+    sender_level: int = Field(default=1, ge=1, le=5)
     content: str
     created_at: datetime
 
@@ -158,13 +164,22 @@ class PostInput(Input):
         return tags
 
 
+class PostImage(BaseModel):
+    id: UUID
+    width: int = Field(ge=1, le=1600)
+    height: int = Field(ge=1, le=1600)
+
+
 class PostView(BaseModel):
+    completed: bool = False
+    images: list[PostImage] = Field(default_factory=list, max_length=5)
     is_demo: bool = False
     image_id: UUID | None = None
     id: UUID
     author_id: UUID
     author_name: str
     author_badge: str = "🍱"
+    author_level: int = Field(default=1, ge=1, le=5)
     content: str
     tags: list[str]
     location: Location
@@ -223,6 +238,8 @@ class JoinView(BaseModel):
     post_id: UUID
     requester_id: UUID
     requester_name: str
+    requester_badge: str | None = None
+    requester_level: int | None = Field(default=None, ge=1, le=5)
     status: Literal["pending", "accepted", "rejected", "cancelled"]
     created_at: datetime
     decided_at: datetime | None
@@ -259,6 +276,7 @@ class ChatUnread(BaseModel):
 
 
 class ChatActivity(BaseModel):
+    accepted_requests: int = Field(default=0, ge=0)
     groups: list[ChatUnread]
     total_unread: int = Field(ge=0)
     pending_requests: int = Field(ge=0)
@@ -279,6 +297,7 @@ class PublicProfileView(BaseModel):
     badge: str
     created_at: datetime
     active_posts: int = Field(ge=0)
+    level: int = Field(default=1, ge=1, le=5)
 
 
 class ServerClockView(BaseModel):
@@ -286,6 +305,8 @@ class ServerClockView(BaseModel):
 
 
 class OrderActivityView(BaseModel):
+    requester_level: int = Field(default=1, ge=1, le=5)
+    requester_badge: str = "🍱"
     id: UUID
     post_id: UUID
     post_content: str

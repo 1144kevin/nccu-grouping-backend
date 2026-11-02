@@ -19,10 +19,20 @@ def main() -> None:
     from dotenv import dotenv_values
 
     config = dotenv_values(ROOT / ".local" / "supabase-dev.env")
-    for name in ("SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "CORE_GOOGLE_IOS_ENABLED"):
+    for name in (
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "CORE_GOOGLE_IOS_ENABLED",
+        "CORE_GOOGLE_PUBLIC_WEB_CALLBACK",
+    ):
         if config.get(name):
             os.environ[name] = config[name]
     local_ai = dotenv_values(ROOT / ".local" / "local-ai.env")
+    # Entered by the user locally. Never print, expose to the frontend, or commit.
+    gemini = dotenv_values(ROOT / ".local" / "gemini.env")
+    for name in ("STEALTH_CONVERSATION_PROVIDER", "STEALTH_GEMINI_MODEL", "STEALTH_GEMINI_API_KEY"):
+        if gemini.get(name):
+            os.environ[name] = gemini[name]
     moderation = dotenv_values(ROOT / ".local" / "moderation.env")
     enabled = moderation.get("CORE_MODERATION_ENABLED", "false").lower()
     if enabled not in ("true", "false"):
@@ -66,7 +76,15 @@ def main() -> None:
     if args.check:
         print("Scoped Supabase configuration valid. No listener or network requests started.")
         return
-    print("Local API / Supabase development Auth + database. No deployment or paid AI.")
+    settings = get_settings()
+    if settings.stealth_ai_provider == "ollama_local" or settings.stealth_semantic_enabled:
+        from scripts.local_model_runtime import ensure_local_model
+
+        if ensure_local_model():
+            print("Existing local model service is ready (127.0.0.1:11434).")
+        else:
+            print("Local models unavailable. Run scripts/run_local_model.py; no models downloaded.")
+    print("Local API / Supabase Auth + database. Guided chat uses the configured provider.")
     print("API: http://127.0.0.1:8000/api/v1 ; Ctrl+C stops the server.")
     uvicorn.run("app.main:app", host="127.0.0.1", port=8000, proxy_headers=False)
 
