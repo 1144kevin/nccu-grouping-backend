@@ -16,7 +16,7 @@ from app.api.routes import uploads
 from app.api.routes.chat_photos import ChatMediaService
 from app.core.config import get_settings
 from app.core_cloud.images import normalize_image
-from app.core_cloud.media import AssetView, MediaService
+from app.core_cloud.media import AssetView, ImageEdit, MediaService
 from app.core_cloud.store import PROJECT_URL, SupabaseCoreStore
 from app.core_local import dependencies
 from app.core_local.schemas import ProfileView
@@ -27,6 +27,37 @@ def png():
     output = io.BytesIO()
     Image.new("RGB", (12, 8), "blue").save(output, "PNG")
     return output.getvalue()
+
+
+def test_edit_album_validates_limits_and_keeps_version_checks():
+    from datetime import timedelta
+
+    from pydantic import ValidationError
+
+    value = {
+        "content": "編輯既有拼單，邀請大家一起加入。",
+        "tags": ["拼單"],
+        "location": {"name": "測試點", "latitude": 24.98, "longitude": 121.57},
+        "deadline_at": datetime.now(UTC) + timedelta(hours=2),
+        "capacity": 3,
+        "price_per_person": None,
+    }
+    image = uuid4()
+    assert ImageEdit(value=value, image_ids=[], expected_version=1).image_ids == []
+    for ids, version in [([image, image], 1), ([uuid4() for _ in range(6)], 1), ([], 0), ([], "1")]:
+        with pytest.raises(ValidationError):
+            ImageEdit(value=value, image_ids=ids, expected_version=version)
+
+
+def test_existing_image_read_checks_access_before_downloading(media_client):
+    client, service = media_client
+    service.rpc.side_effect = HTTPException(404, "image_not_found")
+    response = client.get(
+        f"/api/v1/uploads/images/{uuid4()}/content",
+        headers={"Authorization": "Bearer synthetic-session"},
+    )
+    assert response.status_code == 404
+    service._download.assert_not_called()
 
 
 @pytest.fixture

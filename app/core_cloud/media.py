@@ -54,10 +54,28 @@ class ImagePublish(StrictModel):
         return self
 
 
+class ImageEdit(StrictModel):
+    value: PostInput
+    image_ids: list[UUID] = Field(max_length=5)
+    expected_version: int = Field(ge=1, strict=True)
+
+    @model_validator(mode="after")
+    def distinct_images(self):
+        if len(set(self.image_ids)) != len(self.image_ids):
+            raise ValueError("duplicate_images")
+        return self
+
+
 class ImageURL(BaseModel):
     id: UUID
     url: str
     expires_in: int = 60
+    width: int
+    height: int
+
+
+class ImageContent(BaseModel):
+    content_base64: str
     width: int
     height: int
 
@@ -205,6 +223,16 @@ class MediaService:
                     "value": value.value.model_dump(mode="json"),
                     "request_key": key,
                 },
+            )
+        )
+
+    def edit(self, post_id: UUID, value: ImageEdit) -> PostView:
+        return PostView.model_validate(
+            self.store._request(
+                "POST",
+                "/rest/v1/rpc/core_edit_post_media",
+                body={"args": {"post_id": str(post_id), **value.model_dump(mode="json")}},
+                token=self.store.token,
             )
         )
 
