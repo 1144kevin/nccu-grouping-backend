@@ -111,6 +111,7 @@ class MessageInput(Input):
 
 
 class MessageView(BaseModel):
+    event_kind: Literal["joined", "left", "completed"] | None = None
     image_id: UUID | None = None
     id: UUID
     post_id: UUID
@@ -272,6 +273,7 @@ class ChatUnread(BaseModel):
 
 
 class ChatActivity(BaseModel):
+    accepted_requests: int = Field(default=0, ge=0)
     groups: list[ChatUnread]
     total_unread: int = Field(ge=0)
     pending_requests: int = Field(ge=0)
