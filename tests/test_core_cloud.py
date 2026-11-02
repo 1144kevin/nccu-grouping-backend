@@ -7,7 +7,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.core.config import Settings
-from app.core_cloud.store import PROJECT_URL, SupabaseCoreStore
+from app.core_cloud.store import PROJECT_URL, SupabaseCoreStore, shared_http_client
 from app.core_local.schemas import (
     AppPasswordInput,
     ConfirmationView,
@@ -19,6 +19,7 @@ from app.core_local.schemas import (
 
 @pytest.fixture
 def cloud(monkeypatch):
+    shared_http_client.cache_clear()
     real_client = httpx.Client
     requests = []
     responses = []
@@ -38,7 +39,10 @@ def cloud(monkeypatch):
         supabase_url=PROJECT_URL,
         supabase_publishable_key="sb_publishable_synthetic",
     )
-    return SupabaseCoreStore(settings, "synthetic-user-token"), requests, responses
+    yield SupabaseCoreStore(settings, "synthetic-user-token"), requests, responses
+    if shared_http_client.cache_info().currsize:
+        shared_http_client().close()
+    shared_http_client.cache_clear()
 
 
 def profile():
@@ -57,7 +61,6 @@ def test_refresh_rotates_credentials_and_verifies_live_session(cloud):
     responses.extend(
         [
             (200, {"access_token": "rotated-access", "refresh_token": "rotated-refresh"}),
-            (200, {"id": "auth-user"}),
             (200, profile()),
         ]
     )
@@ -65,7 +68,7 @@ def test_refresh_rotates_credentials_and_verifies_live_session(cloud):
     assert session.refresh_token == "rotated-refresh"
     assert json.loads(requests[0].content) == {"refresh_token": "synthetic-refresh"}
     assert "authorization" not in requests[0].headers
-    assert requests[2].headers["authorization"] == "Bearer rotated-access"
+    assert requests[1].headers["authorization"] == "Bearer rotated-access"
 
 
 @pytest.mark.parametrize("status", [400, 403, 404, 422])
@@ -78,12 +81,11 @@ def test_invalid_refresh_is_session_expiry_without_leaking_provider_details(clou
     assert failure.value.detail == "invalid_or_expired_session"
 
 
-def test_cloud_auth_verifies_with_auth_server_and_live_session_rpc(cloud):
+def test_cloud_auth_uses_jwt_verified_rpc_and_checks_the_live_session(cloud):
     store, requests, responses = cloud
     responses.extend(
         [
             (200, {"access_token": "issued-user-token", "expires_in": 3600}),
-            (200, {"id": "auth-user"}),
             (200, profile()),
         ]
     )
@@ -93,11 +95,10 @@ def test_cloud_auth_verifies_with_auth_server_and_live_session_rpc(cloud):
     assert session.user.auth_mode == "supabase" and session.user.email_verified
     assert [request.url.path for request in requests] == [
         "/auth/v1/token",
-        "/auth/v1/user",
         "/rest/v1/rpc/core_dispatch",
     ]
     assert requests[1].headers["authorization"] == "Bearer issued-user-token"
-    assert json.loads(requests[2].content) == {"action": "me", "args": {}}
+    assert json.loads(requests[1].content) == {"action": "me", "args": {}}
 
 
 def test_signup_pending_confirmation_does_not_invent_a_session(cloud):
@@ -239,3 +240,25 @@ def test_missing_oauth_code_reports_restart_instead_of_service_outage(cloud):
         )
     assert failure.value.status_code == 400
     assert failure.value.detail == "google_login_expired_restart"
+
+
+def test_shared_connections_keep_three_concurrent_request_headers_separate(cloud):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    store, requests, responses = cloud
+    responses.extend([(200, {"ok": True})] * 4)
+    started = Barrier(3)
+
+    def request(number):
+        started.wait(timeout=5)
+        return store._request("POST", "/rest/v1/rpc/synthetic", token=f"synthetic-{number}")
+
+    with ThreadPoolExecutor(max_workers=3) as workers:
+        assert list(workers.map(request, range(3))) == [{"ok": True}] * 3
+    assert {request.headers["authorization"] for request in requests} == {
+        "Bearer synthetic-0", "Bearer synthetic-1", "Bearer synthetic-2"
+    }
+    assert "authorization" not in shared_http_client().headers
+    store._request("POST", "/rest/v1/rpc/synthetic")
+    assert "authorization" not in requests[-1].headers
