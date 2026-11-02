@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 
+from app.core_cloud.grounding import denied_roles, personal_role_evidence, supported_roles
 from app.core_cloud.intake import (
     IntakeFacts,
     IntakeQuestion,
@@ -276,6 +277,26 @@ def converse(
             facts = interpreter.interpret(value.model_copy(update={"turns": turns})).facts
             method = "local_model"
     original = "\n".join(turns)
+    revoked = reconcile_role_preferences(facts, turns)
+    if (
+        natural
+        and revoked
+        and (
+            natural.question_field == "roles"
+            or (
+                "pickup" in revoked
+                and re.search(r"願意|可以|能否|是否|要不要|能不能", natural.message)
+                and re.search(r"取餐|拿餐|領餐|跑腿", natural.message)
+                and "pickup" not in denied_roles(natural.message)
+            )
+        )
+    ):
+        natural.question_field = None
+        natural.message = (
+            "了解，不需要你去取餐，我會以這個條件繼續整理，其他已說明的需求維持不變。"
+            if "pickup" in revoked
+            else "了解，分工以你最新的意願為準，其他已說明的需求維持不變。"
+        )
     # A budget-only statement is not an ambiguous quotation from a merchant.
     if (
         facts.cost_needs_clarification
@@ -373,3 +394,66 @@ def converse(
         ready_for_review=ready,
         interpretation=method,
     )
+
+
+def reconcile_role_preferences(facts: IntakeFacts, turns: list[str]) -> set[str]:
+    """Replay explicit personal role choices in order; the latest consent wins.
+
+    This does not infer consent from an assistant suggestion, a third party or an
+    old client snapshot. In particular, withdrawing pickup also withdraws plan kind.
+    """
+    original = "\n".join(turns)
+    roles: set[str] = set()
+    last_explicit: set[str] = set()
+    proof = None
+    revoked: set[str] = set()
+    for index, turn in enumerate(turns):
+        for clause in re.split(r"[，。；\n]|但是|不過|但", turn):
+            clause = clause.strip()
+            if not clause or not personal_role_evidence(clause, original):
+                continue
+            denied = denied_roles(clause)
+            if re.search(
+                r"我.{0,4}(?:不想|不願意|不要|無法|不能).{0,4}(?:出門|跑腿)|我.{0,4}(?:待|留)在宿舍",
+                clause,
+            ):
+                denied.add("pickup")
+            if (
+                re.fullmatch(
+                    r"(?:我)?(?:其實|現在|改成)?(?:不願意|不想|不要)(?:了|啦|喔|！|!)?", clause
+                )
+                and len(last_explicit) == 1
+            ):
+                denied |= last_explicit
+            cleared = bool(
+                re.search(r"暫不負責|沒有任何角色|沒有角色|不負責任何|取消所有分工", clause)
+            )
+            granted = (
+                supported_roles(clause) - denied
+                if re.search(
+                    r"我(?:手上)?有|手上有|我願意|我可以|我負責|我會幫|我能幫|^願意|^可以", clause
+                )
+                else set()
+            )
+            if not denied and not granted and not cleared:
+                continue
+            if cleared:
+                denied |= roles
+                roles.clear()
+            roles -= denied
+            roles |= granted
+            if granted:
+                last_explicit = granted
+            proof = clause[:160]
+            if index == len(turns) - 1:
+                revoked |= denied
+                revoked -= granted
+    if proof is not None:
+        facts.roles = sorted(roles)
+        facts.roles_confirmed = True
+        facts.evidence.roles = proof
+        if (facts.kind == "plan" and "pickup" not in roles) or (
+            facts.kind == "offer" and not roles
+        ):
+            facts.kind = "need"
+    return revoked
