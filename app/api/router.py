@@ -23,6 +23,7 @@ from app.api.routes import (
     uploads,
     user_blocks,
     users,
+    web_push,
 )
 
 api_router = APIRouter()
@@ -39,6 +40,7 @@ api_router.include_router(post_sharing.router)
 api_router.include_router(join_requests.router)
 api_router.include_router(conversations.router)
 api_router.include_router(notifications.router)
+api_router.include_router(web_push.router)
 api_router.include_router(uploads.router)
 api_router.include_router(chat_photos.router)
 api_router.include_router(ai.router)

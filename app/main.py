@@ -22,11 +22,28 @@ from app.stealth.service import StealthError
 async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     configure_logging(getattr(application.state, "cloud_settings", None))
     task = None
+    application.state.web_push = None
+    push_thread = None
+    settings = application.state.runtime_settings
+    if settings.core_supabase_enabled and settings.environment == "local":
+        import threading
+
+        from app.core_cloud.web_push import WebPushDelivery
+
+        application.state.web_push = WebPushDelivery(settings)
+        push_thread = threading.Thread(
+            target=application.state.web_push.run, name="web-push", daemon=True
+        )
+        push_thread.start()
     if application.state.stealth_watch is not None:
         task = asyncio.create_task(application.state.stealth_watch.run())
     try:
         yield
     finally:
+        if application.state.web_push:
+            application.state.web_push.stopped.set()
+        if push_thread:
+            await asyncio.to_thread(push_thread.join, 2)
         if task is not None:
             task.cancel()
             with suppress(asyncio.CancelledError):
@@ -60,6 +77,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url=None if cloud else "/redoc",
         openapi_url=None if cloud else "/openapi.json",
     )
+    application.state.runtime_settings = settings
     from app.core_cloud.stealth_watch import StealthWatch
 
     application.state.stealth_watch = (
