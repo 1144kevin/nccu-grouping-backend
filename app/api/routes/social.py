@@ -19,7 +19,14 @@ def social(store, action, args):
     )
 
 
+class AvatarMember(BaseModel):
+    id: UUID
+    name: str
+    badge: str
+
+
 class Thread(BaseModel):
+    avatar_members: list[AvatarMember] = Field(default_factory=list, max_length=2)
     id: UUID
     kind: Literal["group", "direct", "stealth"]
     post: PostView | None = None
