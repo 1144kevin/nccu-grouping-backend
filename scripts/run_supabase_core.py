@@ -76,6 +76,14 @@ def main() -> None:
     if args.check:
         print("Scoped Supabase configuration valid. No listener or network requests started.")
         return
+    settings = get_settings()
+    if settings.stealth_ai_provider == "ollama_local" or settings.stealth_semantic_enabled:
+        from scripts.local_model_runtime import ensure_local_model
+
+        if ensure_local_model():
+            print("Existing local model service is ready (127.0.0.1:11434).")
+        else:
+            print("Local models unavailable. Run scripts/run_local_model.py; no models downloaded.")
     print("Local API / Supabase Auth + database. Guided chat uses the configured provider.")
     print("API: http://127.0.0.1:8000/api/v1 ; Ctrl+C stops the server.")
     uvicorn.run("app.main:app", host="127.0.0.1", port=8000, proxy_headers=False)

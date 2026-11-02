@@ -69,6 +69,8 @@ class OllamaDraftProvider:
                 return value
         except httpx.TimeoutException as exc:
             raise LocalModelError("local_model_timeout") from exc
+        except httpx.ConnectError as exc:
+            raise LocalModelError("local_model_unavailable") from exc
         except (httpx.HTTPError, ValueError, UnicodeError) as exc:
             raise LocalModelError("invalid_local_model_response") from exc
 
