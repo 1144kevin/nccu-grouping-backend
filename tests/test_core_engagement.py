@@ -147,7 +147,11 @@ def test_invalid_or_forged_settings_never_reach_database(client, patch):
 
 def test_reports_are_private_idempotent_requests_not_fake_success(client):
     api, store = client
-    body = ReportInput(kind="feedback", detail="這是明確描述的測試問題，需要管理者查看。")
+    body = ReportInput(
+        kind="feedback",
+        detail="這是明確描述的測試問題，需要管理者查看。",
+        evidence_image_id=uuid4(),
+    )
     store._request.return_value = {
         **body.model_dump(mode="json"),
         "id": str(uuid4()),

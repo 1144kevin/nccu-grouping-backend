@@ -58,6 +58,7 @@ class AppPasswordInput(BaseModel):
 
 
 class ProfileView(BaseModel):
+    avatar_id: UUID | None = None
     profile_setup_required: bool = False
     deletion_pending: bool = False
     id: UUID
@@ -72,6 +73,7 @@ class ProfileView(BaseModel):
 
 
 class ProfileInput(Input):
+    avatar_id: UUID | None = None
     display_name: str = Field(min_length=1, max_length=40)
     bio: str = Field(max_length=160)
     badge: Literal["🍜", "🥐", "🍕", "🧋", "🍱", "🍍"]

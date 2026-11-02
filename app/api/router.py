@@ -5,6 +5,7 @@ from app.api.routes import (
     ai,
     auth,
     chat_photos,
+    profile_media,
     conversations,
     demo,
     development,
@@ -43,6 +44,7 @@ api_router.include_router(notifications.router)
 api_router.include_router(web_push.router)
 api_router.include_router(uploads.router)
 api_router.include_router(chat_photos.router)
+api_router.include_router(profile_media.router)
 api_router.include_router(ai.router)
 api_router.include_router(recommendations.router)
 api_router.include_router(reports.router)

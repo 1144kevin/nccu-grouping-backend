@@ -71,6 +71,7 @@ class SavedPostPreferences(StrictModel):
 
 
 class ReportInput(StrictModel):
+    evidence_image_id: UUID
     kind: Literal["feedback", "post", "message", "user"]
     target_id: UUID | None = None
     reason: Literal["other", "spam", "harassment", "inappropriate", "fraud"] = "other"
@@ -94,6 +95,8 @@ class ReportInput(StrictModel):
 
 
 class ReportView(ReportInput):
+    # Earlier reports remain readable; all new reports require an image.
+    evidence_image_id: UUID | None = None
     id: UUID
     status: Literal["received", "reviewing", "resolved", "dismissed"]
     public_response: str = ""

@@ -237,7 +237,9 @@ class SupabaseCoreStore:
         )
 
     def update_profile(self, actor: UUID, value: ProfileInput) -> ProfileView:
-        return ProfileView.model_validate(self._rpc("profile", value.model_dump(mode="json")))
+        return ProfileView.model_validate(
+            self._rpc("profile", value.model_dump(mode="json", exclude_unset=True))
+        )
 
     def posts(
         self,
