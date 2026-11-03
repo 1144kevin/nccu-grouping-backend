@@ -70,6 +70,7 @@ class ProfileView(BaseModel):
     version: int = 1
     auth_mode: Literal["local_development", "supabase"] = "local_development"
     email_verified: bool = False
+    auth_provider: Literal["email", "google", "unknown"] = "unknown"
 
 
 class ProfileInput(Input):

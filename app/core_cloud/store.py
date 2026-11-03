@@ -1,3 +1,5 @@
+import base64
+import json
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from typing import Any
@@ -221,7 +223,18 @@ class SupabaseCoreStore:
     def authenticate(self, token: str) -> ProfileView:
         # PostgREST verifies JWT signature/expiry before dispatch; 'me' also checks
         # the live auth.sessions row and account status. No second Auth roundtrip.
-        return ProfileView.model_validate(self._rpc("me", token=token))
+        profile = ProfileView.model_validate(self._rpc("me", token=token))
+        # The RPC has already verified the JWT and active session. Only then use
+        # its provider claim to decide which account settings to show.
+        try:
+            payload = token.split(".")[1]
+            claims = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
+            metadata = claims.get("app_metadata") or {}
+            provider = metadata.get("provider")
+            profile.auth_provider = provider if provider in ("email", "google") else "unknown"
+        except (ValueError, IndexError, TypeError, AttributeError):
+            profile.auth_provider = "unknown"
+        return profile
 
     def logout(self, token: str) -> None:
         self._request("POST", "/auth/v1/logout?scope=local", token=token)

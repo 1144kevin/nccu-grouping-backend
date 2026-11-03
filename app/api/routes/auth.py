@@ -110,4 +110,6 @@ def logout(store: StoreDep, token: TokenDep, _: UserDep) -> Response:
 
 @router.patch("/me", response_model=ProfileView)
 def update_me(value: ProfileInput, store: StoreDep, user: UserDep) -> ProfileView:
-    return store.update_profile(user.id, value)
+    updated = store.update_profile(user.id, value)
+    updated.auth_provider = user.auth_provider
+    return updated
