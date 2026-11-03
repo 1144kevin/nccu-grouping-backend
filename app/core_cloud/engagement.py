@@ -20,6 +20,15 @@ class NotificationPreferences(StrictModel):
 class AccountPreferences(StrictModel):
     notifications: NotificationPreferences = Field(default_factory=NotificationPreferences)
     preferred_tags: list[Tag] = Field(default_factory=list, max_length=24)
+    custom_locations: list[Tag] = Field(default_factory=list, max_length=24)
+
+    @model_validator(mode="after")
+    def locations_are_selected(self):
+        if len(set(self.custom_locations)) != len(self.custom_locations) or not set(
+            self.custom_locations
+        ).issubset(self.preferred_tags):
+            raise ValueError("invalid custom locations")
+        return self
 
     @field_validator("preferred_tags")
     @classmethod
@@ -124,7 +133,9 @@ class Engagement:
         return PreferencesView.model_validate(self.rpc("preferences_get"))
 
     def save_preferences(self, value: PreferencesUpdate):
-        return PreferencesView.model_validate(self.rpc("preferences_put", value.model_dump()))
+        return PreferencesView.model_validate(
+            self.rpc("preferences_put", value.model_dump(exclude_unset=True))
+        )
 
     def inbox(self):
         return InboxPreferences.model_validate(self.rpc("inbox_list"))
