@@ -3,7 +3,13 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 
-from app.core_cloud.moderation import AppealInput, AppealReview, Moderation, ReviewInput
+from app.core_cloud.moderation import (
+    AppealInput,
+    AppealReview,
+    Moderation,
+    PenaltyInput,
+    ReviewInput,
+)
 from app.core_cloud.store import SupabaseCoreStore
 from app.core_local.dependencies import StoreDep, UserDep
 
@@ -36,6 +42,19 @@ def reports(service: Operator):
 @router.post("/reports/{report_id}/review")
 def review(report_id: UUID, value: ReviewInput, service: Operator):
     return service.review(report_id, value)
+
+
+@router.post("/reports/{report_id}/penalty")
+def penalty(report_id: UUID, value: PenaltyInput, service: Operator):
+    return service.penalize(report_id, value)
+
+
+@router.get("/reports/{report_id}/penalty-target")
+def penalty_target(report_id: UUID, service: Operator):
+    return service.store._request(
+        "POST", "/rest/v1/rpc/core_moderation_penalty_target",
+        body={"report_id": str(report_id)}, token=service.store.token,
+    )
 
 
 @router.get("/reports/{report_id}/context")

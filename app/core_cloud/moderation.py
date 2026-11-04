@@ -33,6 +33,13 @@ class ReviewInput(RequestIdentity):
     internal_note: str = Field(default="", max_length=1000)
 
 
+class PenaltyInput(RequestIdentity):
+    expected_version: int = Field(ge=1, strict=True)
+    points: int = Field(ge=1, le=100, strict=True)
+    public_response: str = Field(min_length=5, max_length=300)
+    internal_note: str = Field(default="", max_length=1000)
+
+
 class Moderation:
     def __init__(self, store: SupabaseCoreStore):
         self.store = store
@@ -49,6 +56,16 @@ class Moderation:
         args = {"report_id": str(report_id), **value.model_dump(mode="json")}
         args["request_key"] = request_identity(value.request_key)
         return self.rpc("review", args)
+
+    def penalize(self, report_id: UUID, value: PenaltyInput):
+        args = {"report_id": str(report_id), **value.model_dump(mode="json")}
+        args["request_key"] = request_identity(value.request_key)
+        return self.store._request(
+            "POST",
+            "/rest/v1/rpc/core_moderation_penalize",
+            body={"args": args},
+            token=self.store.token,
+        )
 
     def appeals(self, action: str, args=None):
         if args and "request_key" in args:

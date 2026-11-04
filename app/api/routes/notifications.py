@@ -14,6 +14,27 @@ class ReadOrders(Input):
     post_id: UUID | None = None
 
 
+class ReadPenalty(Input):
+    id: UUID
+
+
+@router.get("/penalties")
+def penalty_notices(store: StoreDep, _: UserDep, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    if not isinstance(store, SupabaseCoreStore):
+        raise HTTPException(503, "activity_requires_supabase")
+    return store._request("POST", "/rest/v1/rpc/core_penalty_notices",
+                          body={"action": "list", "args": {}}, token=store.token)
+
+
+@router.post("/penalties/read")
+def read_penalty(value: ReadPenalty, store: StoreDep, _: UserDep):
+    if not isinstance(store, SupabaseCoreStore):
+        raise HTTPException(503, "activity_requires_supabase")
+    return store._request("POST", "/rest/v1/rpc/core_penalty_notices",
+                          body={"action": "read", "args": {"id": str(value.id)}}, token=store.token)
+
+
 @router.post("/read")
 def read_orders(value: ReadOrders, store: StoreDep, _: UserDep):
     if not isinstance(store, SupabaseCoreStore):
