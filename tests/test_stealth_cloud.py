@@ -139,7 +139,7 @@ def test_agent_defaults_are_opted_out_and_owner_cannot_be_forged(cloud_api):
     store._request.assert_not_called()
 
 
-def test_signal_is_saved_even_when_match_run_is_in_cooldown(cloud_api):
+def test_signal_is_saved_even_when_match_run_is_in_cooldown(cloud_api, monkeypatch):
     client, store, user = cloud_api
     value = signal_value()
     signal = {
@@ -150,7 +150,12 @@ def test_signal_is_saved_even_when_match_run_is_in_cooldown(cloud_api):
         "status": "active",
         "version": 1,
     }
-    store._request.side_effect = [signal, HTTPException(429, "match_cooldown")]
+    store._request.return_value = signal
+
+    def cooldown(_service, _maximum):
+        raise HTTPException(429, "match_cooldown")
+
+    monkeypatch.setattr("app.core_cloud.stealth.CloudStealth.run", cooldown)
     key = "post-synthetic-idempotency-key"
     result = client.post(ROOT + "/signals", json=value, headers={**HEADERS, "Idempotency-Key": key})
     assert result.status_code == 201 and result.json()["matching"] == "cooldown"
