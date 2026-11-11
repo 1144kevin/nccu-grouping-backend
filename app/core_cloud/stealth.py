@@ -88,6 +88,7 @@ class CloudMatch(BaseModel):
     why_me: list[str]
     is_llm: Literal[False] = False
     is_demo: bool = False
+    semantic_proposal: bool = False
     terms: CloudTerms | None = None
     terms_revision: int = 0
     my_member_number: int = 1
@@ -196,7 +197,17 @@ class CloudStealth:
         return CloudMatches.model_validate(self.rpc("matches"))
 
     def run(self, maximum: int) -> CloudRun:
-        return CloudRun.model_validate(self.rpc("run", {"max_results": maximum}))
+        from app.core_cloud.discovery import discover
+        from app.stealth.ollama import LocalModelError
+        from app.stealth.provider_registry import local_semantic_matcher
+
+        try:
+            result = discover(self, local_semantic_matcher(self.store.settings).embeddings, maximum)
+        except LocalModelError as exc:
+            raise HTTPException(
+                429 if str(exc) == "openai_quota_or_rate_limit" else 503, str(exc)
+            ) from None
+        return CloudRun(created=result["created"], is_llm=False)
 
     def decide(self, proposal_id: UUID, decision: str) -> CloudMatch:
         return CloudMatch.model_validate(

@@ -89,7 +89,7 @@ class IntakeResult(StrictModel):
     facts: IntakeFacts
     questions: list[IntakeQuestion]
     ready_for_review: bool
-    provider: Literal["ollama_local", "apple_on_device", "openai"] = "ollama_local"
+    provider: Literal["ollama_local", "apple_on_device", "openai", "gemini"] = "ollama_local"
     is_llm: Literal[True] = True
     model: str
     warnings: list[str]

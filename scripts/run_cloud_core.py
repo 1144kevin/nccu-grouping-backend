@@ -56,7 +56,7 @@ def main():
         raise SystemExit("Cloud preflight failed: " + str(error)) from None
     get_settings.cache_clear()
     print(
-        "Cloud configuration checks passed. Scoped Supabase; one worker/instance; free rules only."
+        "Cloud configuration checks passed. Scoped Supabase; one worker/instance."
     )
     print("No remote probes, migrations, deployment, paid AI or listener started by checks.")
     if args.write_client_profile:

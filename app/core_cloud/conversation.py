@@ -75,7 +75,7 @@ class ConversationResult(StrictModel):
     question: IntakeQuestion | None
     choices: list[ChatChoice]
     ready_for_review: bool
-    interpretation: Literal["local_model", "quick_answer", "keyword_fallback", "gemini"]
+    interpretation: Literal["local_model", "quick_answer", "keyword_fallback", "gemini", "openai"]
 
 
 class NaturalTurn(StrictModel):
@@ -257,7 +257,7 @@ def converse(
     facts = natural.facts if natural else quick_answer(value, turns)
     method = "quick_answer"
     if natural:
-        method = "gemini"
+        method = "openai" if getattr(dialogue, "provider", None) == "openai" else "gemini"
         original = "\n".join(turns)
         ground(facts, original)
         if value.previous is not None and len(turns) > 1:
@@ -338,6 +338,8 @@ def converse(
         if window_invalid
         else "roles"
         if role_missing
+        else "category"
+        if not facts.category
         else "cost_basis"
         if facts.cost_needs_clarification
         else "known_cost_twd"

@@ -13,6 +13,10 @@ ROOT = Path(__file__).resolve().parents[1]
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="Validate settings without listening")
+    parser.add_argument(
+        "--ai-provider", choices=("gemini", "openai"), default="gemini",
+        help="Select the AI provider. OpenAI is a local prototype only.",
+    )
     args = parser.parse_args()
     os.chdir(ROOT)
     sys.path.insert(0, str(ROOT))
@@ -51,6 +55,18 @@ def main() -> None:
     ):
         if local_ai.get(name):
             os.environ[name] = local_ai[name]
+    # Cloud AI is configured server-side; the existing key is only read by this process.
+    os.environ["STEALTH_AI_PROVIDER"] = args.ai_provider
+    os.environ["STEALTH_CONVERSATION_PROVIDER"] = args.ai_provider
+    os.environ["STEALTH_SEMANTIC_ENABLED"] = "true"
+    if args.ai_provider == "openai":
+        if not args.check:
+            raise RuntimeError(
+                "OpenAI local prototype cannot start against the shared Supabase project. "
+                "Use isolated tests until a separate test database is configured."
+            )
+        private_config = dotenv_values(ROOT / ".local" / "openai-local.env")
+        os.environ["LOCAL_OPENAI_API_KEY"] = private_config.get("OPENAI_API_KEY", "") or ""
     os.environ["ENVIRONMENT"] = "local"
     os.environ["CORE_LOCAL_ENABLED"] = "false"
     os.environ["CORE_SUPABASE_ENABLED"] = "true"
@@ -77,7 +93,7 @@ def main() -> None:
         print("Scoped Supabase configuration valid. No listener or network requests started.")
         return
     settings = get_settings()
-    if settings.stealth_ai_provider == "ollama_local" or settings.stealth_semantic_enabled:
+    if settings.stealth_ai_provider == "ollama_local":
         from scripts.local_model_runtime import ensure_local_model
 
         if ensure_local_model():

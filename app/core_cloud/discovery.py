@@ -8,48 +8,68 @@ from app.stealth.provider_contracts import EmbeddingProvider
 
 def document(signal) -> str:
     return (
-        f"{signal.title}；{signal.category}；偏好：{'、'.join(signal.tags)}；"
-        f"角色：{'、'.join(signal.roles)}"
+        f"需求：{signal.title}；類型：{signal.category}；地點：{signal.location_id}；"
+        f"時間：{signal.starts_at.isoformat()} 至 {signal.ends_at.isoformat()}；"
+        f"預算：{signal.budget_max_twd if signal.budget_max_twd is not None else '未指定'}；"
+        f"偏好：{'、'.join(signal.tags)}；角色：{'、'.join(signal.roles)}；"
+        f"參與偏好：{signal.participation_preference or '未指定'}"
     )
 
 
-def discover(service, embeddings: EmbeddingProvider):
+def index_active_signals(service, embeddings: EmbeddingProvider, *, require_query=False):
+    """Rebuild only the current owner's active signals without searching or matching."""
     now = datetime.now(UTC)
     signals = [s for s in service.signals().items if s.status == "active" and s.expires_at > now][
         :10
     ]
     if not signals:
-        return {"created": 0, "indexed": 0, "requires_unanimous_confirmation": True}
+        return signals, None, 0
     texts = [document(s) for s in signals]
     documents = embeddings.embed(texts, purpose="document")
-    queries = embeddings.embed(texts, purpose="query")
-    if (documents.model_id, documents.dimensions) != (queries.model_id, queries.dimensions):
+    queries = embeddings.embed(texts, purpose="query") if require_query else None
+    if queries and (documents.model_id, documents.dimensions) != (
+        queries.model_id,
+        queries.dimensions,
+    ):
         raise LocalModelError("embedding_space_changed")
     if (
         documents.dimensions != 512
         or len(documents.vectors) != len(signals)
-        or len(queries.vectors) != len(signals)
+        or (queries is not None and len(queries.vectors) != len(signals))
     ):
         raise LocalModelError("invalid_embedding_response")
-
-    def rpc(action, args):
-        return service.store._request(
-            "POST",
-            "/rest/v1/rpc/core_semantic_discovery",
-            body={"action": action, "args": args},
-            token=service.store.token,
-        )
-
-    def items(vectors):
-        return [
-            {"signal_id": str(s.id), "version": s.version, "vector": v}
-            for s, v in zip(signals, vectors, strict=True)
-        ]
-
-    # RPC rechecks ownership, version, expiry and all pair constraints after slow inference.
-    indexed = rpc("index", {"model_id": documents.model_id, "items": items(documents.vectors)})
-    result = rpc(
-        "search",
-        {"model_id": queries.model_id, "queries": items(queries.vectors), "max_results": 3},
+    items = [
+        {"signal_id": str(s.id), "version": s.version, "vector": v}
+        for s, v in zip(signals, documents.vectors, strict=True)
+    ]
+    indexed = service.store._request(
+        "POST",
+        "/rest/v1/rpc/core_semantic_discovery",
+        body={"action": "index", "args": {"model_id": documents.model_id, "items": items}},
+        token=service.store.token,
     )
-    return {**result, "indexed": indexed["indexed"]}
+    return signals, queries if require_query else documents, indexed["indexed"]
+
+
+def discover(service, embeddings: EmbeddingProvider, maximum=3):
+    signals, queries, indexed = index_active_signals(service, embeddings, require_query=True)
+    if not signals:
+        return {"created": 0, "indexed": 0, "requires_unanimous_confirmation": True}
+    items = [
+        {"signal_id": str(s.id), "version": s.version, "vector": v}
+        for s, v in zip(signals, queries.vectors, strict=True)
+    ]
+    result = service.store._request(
+        "POST",
+        "/rest/v1/rpc/core_semantic_discovery",
+        body={
+            "action": "search",
+            "args": {
+                "model_id": queries.model_id,
+                "queries": items,
+                "max_results": min(maximum, 3),
+            },
+        },
+        token=service.store.token,
+    )
+    return {**result, "indexed": indexed}

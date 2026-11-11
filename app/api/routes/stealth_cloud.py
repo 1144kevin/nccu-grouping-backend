@@ -1,16 +1,25 @@
+from datetime import datetime
 from typing import Annotated, Literal
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import Field, field_validator
 
 from app.core.cloud_security import WindowQuota
 from app.core.config import get_settings
+from app.core_cloud import openai_speech
 from app.core_cloud.conversation import ConversationInput, ConversationResult, converse
-from app.core_cloud.discovery import discover
+from app.core_cloud.discovery import discover, index_active_signals
 from app.core_cloud.gemini_conversation import GeminiDialogue
+from app.core_cloud.gemini_provider import GeminiExtractionProvider, GeminiIntentInterpreter
 from app.core_cloud.intake import IntakeRequest, IntakeResult
+from app.core_cloud.openai_budget import configured_budget
+from app.core_cloud.openai_provider import (
+    OpenAIDialogue,
+    OpenAIExtractionProvider,
+    OpenAIIntentInterpreter,
+)
 from app.core_cloud.quick_stealth import QuickInterview, QuickResult, QuickStart
 from app.core_cloud.quick_stealth import interview as quick_interview
 from app.core_cloud.quick_stealth import start as quick_start
@@ -50,6 +59,7 @@ from app.stealth.schemas import (
 )
 
 router = APIRouter(prefix="/stealth-cloud", tags=["stealth-supabase"])
+reindex_quota = WindowQuota()
 
 
 def cloud(store: StoreDep, _: UserDep, response: Response) -> CloudStealth:
@@ -60,6 +70,31 @@ def cloud(store: StoreDep, _: UserDep, response: Response) -> CloudStealth:
 
 
 Cloud = Annotated[CloudStealth, Depends(cloud)]
+
+
+def configured_interpreter(settings):
+    if settings.stealth_ai_provider == "openai" and (
+        settings.environment == "local" or settings.core_cloud_enabled
+    ):
+        try:
+            return OpenAIIntentInterpreter(
+                settings.local_openai_api_key, budget=configured_budget(settings)
+            )
+        except LocalModelError as error:
+            raise HTTPException(503, str(error)) from None
+    if settings.stealth_ai_provider == "gemini":
+        try:
+            return GeminiIntentInterpreter(settings.stealth_gemini_api_key)
+        except LocalModelError as error:
+            raise HTTPException(503, str(error)) from None
+    if settings.environment == "local" and settings.stealth_ai_provider == "ollama_local":
+        return OllamaIntentInterpreter(
+            OllamaDraftProvider(
+                settings.stealth_ollama_model,
+                local_only_confirmed=settings.stealth_ollama_local_only_confirmed,
+            )
+        )
+    return None
 
 
 @router.get("/quick-status")
@@ -82,8 +117,12 @@ def quick_status(service: Cloud, request: Request):
     return {
         "ready": True,
         "conversation_provider": settings.stealth_conversation_provider,
-        "conversation_configured": settings.stealth_conversation_provider != "gemini"
-        or bool(settings.stealth_gemini_api_key.get_secret_value().strip()),
+        "conversation_configured": (
+            bool(settings.local_openai_api_key.get_secret_value().strip())
+            if settings.stealth_conversation_provider == "openai"
+            else settings.stealth_conversation_provider != "gemini"
+            or bool(settings.stealth_gemini_api_key.get_secret_value().strip())
+        ),
     }
 
 
@@ -96,18 +135,7 @@ def start_quick(
     key: Annotated[str, Header(alias="Idempotency-Key", min_length=12, max_length=100)],
 ):
     settings = getattr(request.state, "runtime_settings", None) or get_settings()
-    interpreter = None
-    if (
-        value.confirmed_signal is None
-        and settings.environment == "local"
-        and settings.stealth_ai_provider == "ollama_local"
-    ):
-        interpreter = OllamaIntentInterpreter(
-            OllamaDraftProvider(
-                settings.stealth_ollama_model,
-                local_only_confirmed=settings.stealth_ollama_local_only_confirmed,
-            )
-        )
+    interpreter = configured_interpreter(settings) if value.confirmed_signal is None else None
     result = quick_start(service, value, key, interpreter=interpreter)
     watch = getattr(request.app.state, "stealth_watch", None)
     if watch is not None:
@@ -118,18 +146,24 @@ def start_quick(
 @router.post("/conversation", response_model=ConversationResult)
 def conversation(value: ConversationInput, service: Cloud, request: Request, user: UserDep):
     settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    if settings.stealth_conversation_provider == "openai" and (
+        settings.environment == "local" or settings.core_cloud_enabled
+    ):
+        try:
+            return converse(
+                service,
+                value,
+                dialogue=OpenAIDialogue(
+                    settings.local_openai_api_key, str(user.id), budget=configured_budget(settings)
+                ),
+            )
+        except LocalModelError as error:
+            raise HTTPException(503, str(error)) from None
     if settings.stealth_conversation_provider == "gemini":
         return converse(
             service, value, dialogue=GeminiDialogue(settings.stealth_gemini_api_key, str(user.id))
         )
-    interpreter = None
-    if settings.environment == "local" and settings.stealth_ai_provider == "ollama_local":
-        interpreter = OllamaIntentInterpreter(
-            OllamaDraftProvider(
-                settings.stealth_ollama_model,
-                local_only_confirmed=settings.stealth_ollama_local_only_confirmed,
-            )
-        )
+    interpreter = configured_interpreter(settings)
     try:
         return converse(service, value, interpreter=interpreter)
     except LocalModelError as error:
@@ -140,6 +174,12 @@ def conversation(value: ConversationInput, service: Cloud, request: Request, use
 def reply_speech(value: SpeechInput, request: Request, user: UserDep, response: Response):
     response.headers["Cache-Control"] = "no-store"
     settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    if settings.stealth_conversation_provider == "openai" and (
+        settings.environment == "local" or settings.core_cloud_enabled
+    ):
+        return openai_speech.synthesize(
+            value, settings.local_openai_api_key, str(user.id), budget=configured_budget(settings)
+        )
     if settings.stealth_conversation_provider != "gemini":
         raise HTTPException(503, "stealth_gemini_not_configured")
     return synthesize(value, settings.stealth_gemini_api_key, str(user.id))
@@ -148,6 +188,19 @@ def reply_speech(value: SpeechInput, request: Request, user: UserDep, response: 
 @router.post("/speech-stream")
 def reply_speech_stream(value: SpeechInput, request: Request, user: UserDep):
     settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    if settings.stealth_conversation_provider == "openai" and (
+        settings.environment == "local" or settings.core_cloud_enabled
+    ):
+        return StreamingResponse(
+            openai_speech.stream_speech(
+                value,
+                settings.local_openai_api_key,
+                str(user.id),
+                budget=configured_budget(settings),
+            ),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+        )
     if settings.stealth_conversation_provider != "gemini":
         raise HTTPException(503, "stealth_gemini_not_configured")
     return StreamingResponse(
@@ -160,14 +213,7 @@ def reply_speech_stream(value: SpeechInput, request: Request, user: UserDep):
 @router.post("/quick-interview", response_model=QuickInterview)
 def interview_quick(value: IntakeRequest, service: Cloud, request: Request):
     settings = getattr(request.state, "runtime_settings", None) or get_settings()
-    interpreter = None
-    if settings.environment == "local" and settings.stealth_ai_provider == "ollama_local":
-        interpreter = OllamaIntentInterpreter(
-            OllamaDraftProvider(
-                settings.stealth_ollama_model,
-                local_only_confirmed=settings.stealth_ollama_local_only_confirmed,
-            )
-        )
+    interpreter = configured_interpreter(settings)
     try:
         return quick_interview(service, value, interpreter=interpreter)
     except LocalModelError as error:
@@ -285,22 +331,35 @@ def save_agent(value: CloudAgentInput, service: Cloud, request: Request, user: U
 
 
 @router.post("/draft", response_model=DraftOutput)
-def draft(value: DraftInput, _: Cloud):
+def draft(value: DraftInput, _: Cloud, request: Request):
+    settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    if settings.stealth_ai_provider == "openai" and (
+        settings.environment == "local" or settings.core_cloud_enabled
+    ):
+        try:
+            return OpenAIExtractionProvider(
+                settings.local_openai_api_key, budget=configured_budget(settings)
+            ).draft(value.text)
+        except LocalModelError as error:
+            raise HTTPException(503, str(error)) from None
+    if settings.stealth_ai_provider == "gemini":
+        try:
+            return GeminiExtractionProvider(settings.stealth_gemini_api_key).draft(value.text)
+        except LocalModelError as error:
+            raise HTTPException(503, str(error)) from None
     return OfflineDraftProvider().draft(value.text)
 
 
 @router.post("/intake", response_model=IntakeResult)
 def intake(value: IntakeRequest, _: Cloud):
     settings = get_settings()
-    if settings.environment != "local" or settings.stealth_ai_provider != "ollama_local":
+    if settings.stealth_ai_provider not in ("ollama_local", "gemini", "openai"):
         raise HTTPException(503, "local_model_not_configured")
     try:
-        return OllamaIntentInterpreter(
-            OllamaDraftProvider(
-                settings.stealth_ollama_model,
-                local_only_confirmed=settings.stealth_ollama_local_only_confirmed,
-            )
-        ).interpret(value)
+        interpreter = configured_interpreter(settings)
+        if interpreter is None:
+            raise HTTPException(503, "local_model_not_configured")
+        return interpreter.interpret(value)
     except LocalModelError as exc:
         raise HTTPException(503, str(exc)) from exc
 
@@ -321,6 +380,38 @@ def signals(service: Cloud, request: Request, user: UserDep):
     if watch is not None and any(s.status == "active" for s in result.items):
         watch.subscribe(str(user.id), service)
     return result
+
+
+@router.get("/formed/{post_id}/roles")
+def formed_roles(post_id: UUID, service: Cloud, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    return service.store._request(
+        "POST",
+        "/rest/v1/rpc/core_stealth_formed_roles",
+        body={"post_id": str(post_id)},
+        token=service.store.token,
+    )
+
+
+@router.get("/history")
+def stealth_history(
+    service: Cloud,
+    response: Response,
+    cursor_time: datetime | None = None,
+    cursor_id: UUID | None = None,
+    limit: int = Query(default=20, ge=1, le=50),
+):
+    response.headers["Cache-Control"] = "no-store"
+    return service.store._request(
+        "POST",
+        "/rest/v1/rpc/core_stealth_history",
+        body={
+            "cursor_time": cursor_time.isoformat() if cursor_time else None,
+            "cursor_id": str(cursor_id) if cursor_id else None,
+            "page_limit": limit,
+        },
+        token=service.store.token,
+    )
 
 
 @router.delete("/signals/{signal_id}", response_model=Signal)
@@ -351,6 +442,21 @@ def discover_matches(service: Cloud):
         return discover(service, matcher.embeddings)
     except LocalModelError as exc:
         raise HTTPException(503, str(exc)) from exc
+
+
+@router.post("/matches/reindex")
+def reindex_own_signals(service: Cloud, user: UserDep):
+    settings = service.store.settings
+    if not settings.cloud_openai_schema_ready:
+        raise HTTPException(503, "semantic_migration_not_ready")
+    if not reindex_quota.allow(("semantic-reindex", str(user.id)), 2):
+        raise HTTPException(429, "openai_rate_limit")
+    matcher = local_semantic_matcher(settings)
+    try:
+        _, vectors, count = index_active_signals(service, matcher.embeddings)
+    except LocalModelError as exc:
+        raise HTTPException(503, str(exc)) from None
+    return {"indexed": count, "model_id": vectors.model_id if vectors else None}
 
 
 @router.post("/matches/{proposal_id}/decision", response_model=CloudMatch)

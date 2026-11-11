@@ -1,4 +1,4 @@
-"""Optional local-only post drafts; never publishes or changes the user's form."""
+"""Bounded AI post drafts; never publishes or changes the user's form."""
 
 import base64
 import binascii

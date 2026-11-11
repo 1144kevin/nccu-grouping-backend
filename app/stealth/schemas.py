@@ -298,7 +298,7 @@ class DraftContent(StrictModel):
 
 
 class DraftOutput(DraftContent):
-    provider: Literal["offline_rules", "ollama_local"] = "offline_rules"
+    provider: Literal["offline_rules", "ollama_local", "gemini", "openai"] = "offline_rules"
     is_llm: bool = Field(default=False, strict=True)
 
 

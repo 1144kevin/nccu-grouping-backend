@@ -62,10 +62,21 @@ def validate_cloud_settings(settings: Settings) -> None:
         raise ValueError("Configure the scoped project's Publishable key")
     if settings.supabase_service_role_key or settings.openai_api_key:
         raise ValueError("Cloud runtime does not accept admin or paid AI keys")
-    if settings.stealth_ai_provider != "offline_rules" or settings.stealth_semantic_enabled:
+    openai_enabled = settings.stealth_ai_provider == "openai"
+    if openai_enabled:
+        if (
+            settings.stealth_conversation_provider != "openai"
+            or not settings.local_openai_api_key.get_secret_value().strip()
+            or not settings.openai_budget_database_url.get_secret_value().strip()
+            or not settings.cloud_openai_schema_ready
+        ):
+            raise ValueError("OpenAI requires a shared budget, private key and verified schema")
+    elif settings.stealth_ai_provider != "offline_rules" or settings.stealth_semantic_enabled:
         raise ValueError(
             "Cloud runtime supports free rule drafts only; no local/paid model connection"
         )
+    elif settings.stealth_conversation_provider != "local":
+        raise ValueError("Cloud conversation provider must match the selected AI provider")
     if settings.cloud_workers != 1 or settings.cloud_instances != 1:
         raise ValueError("PKCE and quotas require exactly one worker and one instance")
     if not 1 <= len(settings.cloud_proxy_networks) <= 32:

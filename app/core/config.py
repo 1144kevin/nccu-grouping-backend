@@ -49,17 +49,22 @@ class Settings(BaseSettings):
     supabase_service_role_key: str = ""
     supabase_storage_bucket: str = "post-media"
     openai_api_key: str = ""
+    local_openai_api_key: SecretStr = SecretStr("")
+    openai_budget_database_url: SecretStr = SecretStr("")
+    cloud_openai_schema_ready: bool = False
 
     # Local-only prototype. Never enable this adapter in a deployed environment.
     stealth_local_enabled: bool = False
     stealth_local_db_path: str = ".local/stealth.sqlite3"
-    stealth_ai_provider: Literal["offline_rules", "ollama_local"] = "offline_rules"
+    stealth_ai_provider: Literal["offline_rules", "ollama_local", "gemini", "openai"] = (
+        "offline_rules"
+    )
     stealth_ollama_model: str = ""
     stealth_ollama_local_only_confirmed: bool = False
     stealth_semantic_enabled: bool = False
     stealth_embedding_model: str = "qwen3-embedding:0.6b"
     # Separate opt-in: only the guided conversation may leave this server.
-    stealth_conversation_provider: Literal["local", "gemini"] = "local"
+    stealth_conversation_provider: Literal["local", "gemini", "openai"] = "local"
     stealth_gemini_model: Literal["gemini-3.5-flash-lite"] = "gemini-3.5-flash-lite"
     stealth_gemini_api_key: SecretStr = SecretStr("")
 

@@ -12,16 +12,13 @@ from datetime import UTC, datetime
 
 from fastapi import HTTPException
 
-from app.core_cloud.discovery import discover
 from app.stealth.ollama import LocalModelError
-from app.stealth.provider_registry import local_semantic_matcher
 
 
 @dataclass
 class Watch:
     service: object
     due: float = 0
-    semantic_due: float = 0
 
 
 class StealthWatch:
@@ -62,14 +59,12 @@ class StealthWatch:
                 ):
                     self.unsubscribe(actor)
                     continue
-                # All eligibility, quiet-hour and replay checks still run inside the RPC.
                 service.run(3)
-                settings = service.store.settings
-                if settings.stealth_semantic_enabled and job.semantic_due <= time.monotonic():
-                    job.semantic_due = time.monotonic() + 120
-                    discover(service, local_semantic_matcher(settings).embeddings)
             except HTTPException as error:
-                if error.status_code in (401, 403, 404):
+                if error.status_code in (401, 403, 404, 429) or error.detail in (
+                    "openai_budget_unavailable",
+                    "openai_quota_or_rate_limit",
+                ):
                     self.unsubscribe(actor)
             except (LocalModelError, ValueError, OSError):
                 # Temporary model/network trouble must not erase the saved request.
