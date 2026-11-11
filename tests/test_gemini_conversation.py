@@ -210,6 +210,19 @@ def test_model_cannot_skip_a_cost_conflict_or_start_matching():
     assert result.question is not None
 
 
+def test_model_cannot_promise_a_confirmation_card_without_a_known_category():
+    provider = Mock()
+    provider.respond.return_value = NaturalTurn(
+        facts=IntakeFacts(title="找人一起"),
+        message="條件整理好了，請看確認卡。",
+        question_field=None,
+    )
+    result = converse(Mock(), ConversationInput(turns=["想找人一起做點事"]), dialogue=provider)
+    assert result.signal is None
+    assert result.question is not None and result.question.field == "category"
+    assert "確認卡" not in result.message
+
+
 def test_dialogue_cannot_claim_an_action_already_happened():
     with pytest.raises(ValidationError):
         NaturalTurn(message="已經幫你配對好了", facts=IntakeFacts(title="飲料"))
