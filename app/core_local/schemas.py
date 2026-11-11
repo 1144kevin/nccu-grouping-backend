@@ -173,6 +173,10 @@ class PostImage(BaseModel):
 
 class PostView(BaseModel):
     completed: bool = False
+    workflow_stage: Literal["waiting", "formed", "en_route", "delivering", "completed"] | None = (
+        None
+    )
+    workflow_formed_once: bool = False
     images: list[PostImage] = Field(default_factory=list, max_length=5)
     is_demo: bool = False
     image_id: UUID | None = None

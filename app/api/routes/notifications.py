@@ -18,21 +18,64 @@ class ReadPenalty(Input):
     id: UUID
 
 
+@router.get("/order-events")
+def order_events(store: StoreDep, _: UserDep, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    if not isinstance(store, SupabaseCoreStore):
+        raise HTTPException(503, "activity_requires_supabase")
+    return store._request(
+        "POST",
+        "/rest/v1/rpc/core_order_workflow_notices",
+        body={"action": "list"},
+        token=store.token,
+    )
+
+
+@router.post("/order-events/read")
+def read_order_events(store: StoreDep, _: UserDep):
+    if not isinstance(store, SupabaseCoreStore):
+        raise HTTPException(503, "activity_requires_supabase")
+    return store._request(
+        "POST",
+        "/rest/v1/rpc/core_order_workflow_notices",
+        body={"action": "read"},
+        token=store.token,
+    )
+
+
+@router.get("/unread")
+def unread_notifications(store: StoreDep, _: UserDep, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    if not isinstance(store, SupabaseCoreStore):
+        raise HTTPException(503, "activity_requires_supabase")
+    return store._request(
+        "POST", "/rest/v1/rpc/core_notification_badge", body={}, token=store.token
+    )
+
+
 @router.get("/penalties")
 def penalty_notices(store: StoreDep, _: UserDep, response: Response):
     response.headers["Cache-Control"] = "no-store"
     if not isinstance(store, SupabaseCoreStore):
         raise HTTPException(503, "activity_requires_supabase")
-    return store._request("POST", "/rest/v1/rpc/core_penalty_notices",
-                          body={"action": "list", "args": {}}, token=store.token)
+    return store._request(
+        "POST",
+        "/rest/v1/rpc/core_penalty_notices",
+        body={"action": "list", "args": {}},
+        token=store.token,
+    )
 
 
 @router.post("/penalties/read")
 def read_penalty(value: ReadPenalty, store: StoreDep, _: UserDep):
     if not isinstance(store, SupabaseCoreStore):
         raise HTTPException(503, "activity_requires_supabase")
-    return store._request("POST", "/rest/v1/rpc/core_penalty_notices",
-                          body={"action": "read", "args": {"id": str(value.id)}}, token=store.token)
+    return store._request(
+        "POST",
+        "/rest/v1/rpc/core_penalty_notices",
+        body={"action": "read", "args": {"id": str(value.id)}},
+        token=store.token,
+    )
 
 
 @router.post("/read")

@@ -66,6 +66,22 @@ class ReadDirect(Input):
     message_id: UUID
 
 
+class OrderWorkflowAction(Input):
+    action: Literal["vote", "depart", "purchase", "complete"]
+    image_id: UUID | None = None
+
+
+def order_workflow(store, action, args):
+    if not isinstance(store, SupabaseCoreStore):
+        raise HTTPException(503, "social_requires_supabase")
+    return store._request(
+        "POST",
+        "/rest/v1/rpc/core_order_workflow",
+        body={"action": action, "args": args},
+        token=store.token,
+    )
+
+
 @router.get("/inbox", response_model=InboxPage)
 def inbox(
     store: StoreDep,
@@ -136,6 +152,35 @@ def direct_read(thread_id: UUID, value: ReadDirect, store: StoreDep, _: UserDep)
 @router.get("/orders/{post_id}/summary")
 def order(post_id: UUID, store: StoreDep, _: UserDep):
     return social(store, "order", {"post_id": str(post_id)})
+
+
+@router.get("/orders/{post_id}/workflow")
+def get_order_workflow(post_id: UUID, store: StoreDep, _: UserDep):
+    return order_workflow(store, "view", {"post_id": str(post_id)})
+
+
+@router.post("/orders/{post_id}/workflow")
+def update_order_workflow(post_id: UUID, value: OrderWorkflowAction, store: StoreDep, _: UserDep):
+    return order_workflow(
+        store,
+        value.action,
+        {
+            "post_id": str(post_id),
+            **({"image_id": str(value.image_id)} if value.image_id else {}),
+        },
+    )
+
+
+@router.get("/moderation/orders/{post_id}/evidence")
+def moderator_order_evidence(post_id: UUID, store: StoreDep, _: UserDep):
+    if not isinstance(store, SupabaseCoreStore):
+        raise HTTPException(503, "social_requires_supabase")
+    return store._request(
+        "POST",
+        "/rest/v1/rpc/core_order_evidence_for_moderator",
+        body={"target": str(post_id)},
+        token=store.token,
+    )
 
 
 @router.post("/orders/{post_id}/handoff")
