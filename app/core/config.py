@@ -1,8 +1,9 @@
+import json
 import os
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,6 +35,7 @@ class Settings(BaseSettings):
     # Separate cloud runtime: TLS terminates at one explicitly trusted ingress hop.
     core_cloud_enabled: bool = False
     cloud_public_api_url: str = ""
+    cloud_proxy_mode: Literal["strict", "render"] = "strict"
     cloud_proxy_networks: list[str] = []
     cloud_workers: int = 1
     cloud_instances: int = 1
@@ -74,7 +76,44 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
         hide_input_in_errors=True,
+        enable_decoding=False,
     )
+
+    @field_validator(
+        "backend_cors_origins",
+        "cloud_proxy_networks",
+        "core_device_test_clients",
+        mode="before",
+    )
+    @classmethod
+    def _parse_str_list(cls, value: object) -> object:
+        if isinstance(value, str):
+            text = value.strip()
+            if not text:
+                return []
+            if text.startswith("["):
+                return json.loads(text)
+            return [item.strip() for item in text.split(",") if item.strip()]
+        return value
+
+
+def cloud_settings_from_env() -> Settings:
+    overrides: dict[str, object] = {}
+    if "BACKEND_CORS_ORIGINS" not in os.environ:
+        overrides["backend_cors_origins"] = []
+    if os.environ.get("RENDER", "").lower() == "true":
+        if "CLOUD_PROXY_MODE" not in os.environ:
+            overrides["cloud_proxy_mode"] = "render"
+        if "CLOUD_PROXY_NETWORKS" not in os.environ:
+            overrides["cloud_proxy_networks"] = [
+                "10.0.0.0/8",
+                "172.16.0.0/12",
+                "192.168.0.0/16",
+                "127.0.0.1/32",
+                "::1/128",
+                "fc00::/7",
+            ]
+    return Settings(_env_file=None, **overrides)
 
 
 @lru_cache
@@ -83,5 +122,5 @@ def get_settings() -> Settings:
         os.environ.get("ENVIRONMENT") == "cloud"
         or os.environ.get("CORE_CLOUD_ENABLED", "").lower() == "true"
     ):
-        return Settings(_env_file=None)
+        return cloud_settings_from_env()
     return Settings()

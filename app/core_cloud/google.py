@@ -66,7 +66,9 @@ class GoogleFlows:
         if client == "web_public":
             from app.core.cloud_runtime import https_address
 
-            callback = settings.core_google_public_web_callback
+            callback = settings.core_google_public_web_callback or (
+                settings.cloud_google_web_callback if settings.core_cloud_enabled else ""
+            )
             try:
                 https_address(callback, "/auth/callback")
             except ValueError:

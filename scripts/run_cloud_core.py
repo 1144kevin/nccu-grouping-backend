@@ -15,7 +15,7 @@ def main():
     from pydantic import ValidationError
 
     from app.core.cloud_runtime import validate_cloud_settings
-    from app.core.config import Settings, get_settings
+    from app.core.config import Settings, cloud_settings_from_env, get_settings
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--env-file", type=Path, help="Optional explicit private environment file")
@@ -29,13 +29,17 @@ def main():
     if args.env_file:
         if not args.env_file.is_file():
             raise SystemExit("Cloud environment file does not exist")
-        allowed = {name.upper() for name in Settings.model_fields} | {"PORT", "CLOUD_BIND_HOST"}
+        allowed = {name.upper() for name in Settings.model_fields} | {
+            "PORT",
+            "CLOUD_BIND_HOST",
+            "RENDER",
+        }
         values = dotenv_values(args.env_file)
         if values.keys() - allowed:
             raise SystemExit("Unknown environment variable names; no values were printed")
         os.environ.update({k: v for k, v in values.items() if v is not None})
     try:
-        settings = Settings(_env_file=None)
+        settings = cloud_settings_from_env()
         validate_cloud_settings(settings)
         for name in ("WEB_CONCURRENCY", "UVICORN_WORKERS"):
             if os.environ.get(name, "1") != "1":

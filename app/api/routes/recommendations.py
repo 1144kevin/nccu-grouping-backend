@@ -18,7 +18,9 @@ router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 
 @router.post("/semantic", response_model=FeedSemanticPage)
 def semantic_recommendations(value: FeedSemanticRequest, service: EngagementDep):
-    return semantic_feed(service, value.query, lambda: local_semantic_matcher().embeddings)
+    return semantic_feed(
+        service, value.query, lambda: local_semantic_matcher(service.store.settings).embeddings
+    )
 
 
 @router.post("/semantic/validate", response_model=RecommendationPage)

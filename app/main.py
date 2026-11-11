@@ -101,7 +101,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
         @application.get("/ready", include_in_schema=False)
         def cloud_readiness():
-            return {"status": "configured", "database": "not_probed", "ai": "offline_rules"}
+            return {
+                "status": "configured",
+                "database": "not_probed",
+                "ai": settings.stealth_ai_provider,
+            }
 
     application.include_router(health_router)
     application.include_router(api_router, prefix=settings.api_v1_prefix)

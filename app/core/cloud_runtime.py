@@ -86,8 +86,12 @@ def validate_cloud_settings(settings: Settings) -> None:
             network = ipaddress.ip_network(value, strict=True)
         except ValueError:
             raise ValueError("Invalid proxy network format") from None
+        narrow = network.prefixlen >= (24 if network.version == 4 else 64)
+        render_private = settings.cloud_proxy_mode == "render" and (
+            network.is_private or network.is_loopback
+        )
         if (
-            network.prefixlen < (24 if network.version == 4 else 64)
+            (not narrow and not render_private)
             or network.network_address.is_unspecified
             or network.is_multicast
         ):
@@ -100,10 +104,14 @@ def validate_cloud_settings(settings: Settings) -> None:
         parsed = https_address(origin, "")
         if origin != f"https://{parsed.netloc}":
             raise ValueError("CORS requires exact HTTPS origins without paths")
-    if settings.cloud_google_web_callback:
-        parsed = https_address(settings.cloud_google_web_callback, "/auth/callback")
-        if f"https://{parsed.netloc}" not in settings.backend_cors_origins:
-            raise ValueError("Web Google callback must belong to an explicit CORS origin")
+    for web_callback in (
+        settings.cloud_google_web_callback,
+        settings.core_google_public_web_callback,
+    ):
+        if web_callback:
+            parsed = https_address(web_callback, "/auth/callback")
+            if f"https://{parsed.netloc}" not in settings.backend_cors_origins:
+                raise ValueError("Web Google callback must belong to an explicit CORS origin")
     if settings.core_media_enabled and not re.fullmatch(
         r"[0-9a-f]{64}", settings.core_media_signing_key.get_secret_value()
     ):

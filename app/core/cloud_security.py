@@ -103,20 +103,40 @@ class CloudSecurity:
                 await deny(400, "ambiguous_request_headers")
                 return
             values[name] = value.decode("latin1")
+        render_mode = self.settings.cloud_proxy_mode == "render"
         try:
             peer = ipaddress.ip_address(scope["client"][0])
-            client = ipaddress.ip_address(values.get(b"x-forwarded-for", ""))
+            raw_xff = values.get(b"x-forwarded-for", "")
+            if render_mode:
+                hops = [
+                    ipaddress.ip_address(part.strip())
+                    for part in raw_xff.split(",")
+                    if part.strip()
+                ]
+                if not hops or any(h.is_unspecified or h.is_multicast for h in hops):
+                    raise ValueError("invalid_xff")
+                cf_ip = values.get(b"cf-connecting-ip", "").strip()
+                client = ipaddress.ip_address(cf_ip) if cf_ip else hops[0]
+                if client not in hops:
+                    client = hops[0]
+            else:
+                client = ipaddress.ip_address(raw_xff)
         except (ValueError, TypeError, KeyError):
             await deny(403, "untrusted_cloud_ingress")
             return
+        proto = values.get(b"x-forwarded-proto", "")
+        proto_ok = (
+            proto.split(",", 1)[0].strip().lower() == "https"
+            if render_mode
+            else proto == "https"
+        )
+        fhost = values.get(b"x-forwarded-host", self.host).split(",", 1)[0].strip().lower()
         if (
             not any(peer in network for network in self.proxies)
             or values.get(b"host", "").lower() not in (self.host, self.host + ":443")
-            or values.get(b"x-forwarded-proto") != "https"
-            or values.get(b"x-forwarded-host", self.host).lower()
-            not in (self.host, self.host + ":443")
-            or b"forwarded" in values
-            or b"x-real-ip" in values
+            or not proto_ok
+            or fhost not in (self.host, self.host + ":443")
+            or (not render_mode and (b"forwarded" in values or b"x-real-ip" in values))
             or client.is_unspecified
             or client.is_multicast
         ):
@@ -141,11 +161,21 @@ class CloudSecurity:
         ):
             await deny(429, "too_many_auth_attempts")
             return
+        post_writing = (
+            scope["method"] == "POST"
+            and path in ("/api/v1/ai/post-writing", "/api/v1/ai/post-writing/jobs")
+            and self.settings.stealth_ai_provider == "openai"
+        )
+        max_body = (
+            max(self.settings.cloud_body_limit, 30 * 1024 * 1024)
+            if post_writing
+            else self.settings.cloud_body_limit
+        )
         try:
             length = int(values.get(b"content-length", "0"))
         except ValueError:
             length = -1
-        if length < 0 or length > self.settings.cloud_body_limit:
+        if length < 0 or length > max_body:
             await deny(413, "request_body_too_large")
             return
         body, size = bytearray(), 0
@@ -156,7 +186,7 @@ class CloudSecurity:
                     if message["type"] == "http.disconnect":
                         return
                     size += len(message.get("body", b""))
-                    if size > self.settings.cloud_body_limit:
+                    if size > max_body:
                         await deny(413, "request_body_too_large")
                         return
                     body.extend(message.get("body", b""))

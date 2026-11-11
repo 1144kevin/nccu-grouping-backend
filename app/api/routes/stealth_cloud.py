@@ -351,8 +351,8 @@ def draft(value: DraftInput, _: Cloud, request: Request):
 
 
 @router.post("/intake", response_model=IntakeResult)
-def intake(value: IntakeRequest, _: Cloud):
-    settings = get_settings()
+def intake(value: IntakeRequest, _: Cloud, request: Request):
+    settings = getattr(request.state, "runtime_settings", None) or get_settings()
     if settings.stealth_ai_provider not in ("ollama_local", "gemini", "openai"):
         raise HTTPException(503, "local_model_not_configured")
     try:

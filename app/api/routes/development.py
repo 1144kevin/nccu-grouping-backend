@@ -29,7 +29,7 @@ def readiness(
         "images_configured": settings.core_media_enabled,
         "ai_provider": settings.stealth_ai_provider,
         "semantic_configured": settings.stealth_semantic_enabled
-        and settings.environment == "local",
+        and (settings.environment == "local" or settings.core_cloud_enabled),
         "voice_upload": False,
         "remote_push": False,
         "production_ready": False,

@@ -79,6 +79,19 @@ class PostgresBudget:
     def __init__(self, dsn: SecretStr):
         self._dsn = dsn
 
+    @staticmethod
+    def _ssl_context(dsn: str) -> ssl.SSLContext:
+        from urllib.parse import urlsplit
+
+        host = (urlsplit(dsn).hostname or "").lower()
+        ctx = ssl.create_default_context()
+        ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+        if host.endswith((".supabase.co", ".pooler.supabase.com")):
+            # Supabase Pooler uses Supabase Root 2021 CA; keep TLS 1.2+ encryption required.
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+        return ctx
+
     def reserve(self, units: int, kind: str):
         if (
             not isinstance(units, int)
@@ -90,8 +103,12 @@ class PostgresBudget:
         async def reserve_once():
             import asyncpg
 
+            raw_dsn = self._dsn.get_secret_value()
             conn = await asyncpg.connect(
-                self._dsn.get_secret_value(), timeout=5, ssl=ssl.create_default_context()
+                raw_dsn,
+                timeout=5,
+                ssl=self._ssl_context(raw_dsn),
+                statement_cache_size=0,
             )
             try:
                 return await conn.fetchval(

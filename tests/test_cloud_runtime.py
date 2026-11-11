@@ -301,3 +301,97 @@ def test_cloud_native_google_preserves_fixed_callback_and_disables_web_by_defaul
             ).status_code
             == 403
         )
+
+
+def test_render_proxy_mode_and_supabase_pooler_ssl(monkeypatch):
+    import ssl
+    from contextlib import asynccontextmanager
+
+    from app.core.config import cloud_settings_from_env
+    from app.core_cloud.openai_budget import PostgresBudget
+
+    @asynccontextmanager
+    async def no_timeout(_seconds):
+        yield
+
+    monkeypatch.setattr("app.core.cloud_security.asyncio.timeout", no_timeout)
+
+    def run_sync(coro):
+        try:
+            coro.send(None)
+        except StopIteration as stop:
+            return stop.value
+        raise AssertionError("Coroutine did not complete synchronously")
+
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.setenv("ENVIRONMENT", "cloud")
+    monkeypatch.setenv("CORE_CLOUD_ENABLED", "true")
+    monkeypatch.setenv("CORE_SUPABASE_ENABLED", "true")
+    monkeypatch.setenv("CLOUD_PUBLIC_API_URL", "https://api.team-domain.org/api/v1")
+    monkeypatch.setenv("SUPABASE_URL", "https://axdwbfhrkbovgrbngrrh.supabase.co")
+    monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "sb_publishable_synthetic_test_key")
+    auto_render = cloud_settings_from_env()
+    assert auto_render.cloud_proxy_mode == "render"
+    validate_cloud_settings(auto_render)
+
+    render_settings = configured(
+        cloud_proxy_mode="render",
+        cloud_proxy_networks=["10.0.0.0/8", "172.16.0.0/12", "127.0.0.1/32"],
+    )
+    validate_cloud_settings(render_settings)
+    with pytest.raises(ValueError):
+        validate_cloud_settings(
+            configured(cloud_proxy_mode="render", cloud_proxy_networks=["0.0.0.0/0"])
+        )
+
+    sent = []
+
+    async def application(scope, receive, send):
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"ok"})
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message):
+        sent.append(message)
+
+    scope = {
+        "type": "http",
+        "path": "/api/v1/posts",
+        "method": "GET",
+        "headers": [
+            (b"host", b"api.team-domain.org"),
+            (b"x-forwarded-proto", b"https"),
+            (b"x-forwarded-for", b"198.51.100.8, 172.71.1.2, 10.20.30.40"),
+            (b"x-real-ip", b"198.51.100.8"),
+            (b"forwarded", b"for=198.51.100.8;proto=https"),
+        ],
+        "client": ("10.20.30.40", 4321),
+        "scheme": "http",
+    }
+    security = CloudSecurity(application, render_settings)
+    run_sync(security(scope, receive, send))
+    assert next(m for m in sent if m["type"] == "http.response.start")["status"] == 200
+    assert scope["state"]["cloud_client"] == "198.51.100.8"
+
+    sent.clear()
+    bad_scope = {
+        **scope,
+        "headers": [
+            (b"host", b"api.team-domain.org"),
+            (b"x-forwarded-proto", b"https"),
+            (b"x-forwarded-for", b"not-an-ip, 10.20.30.40"),
+        ],
+    }
+    run_sync(security(bad_scope, receive, send))
+    assert next(m for m in sent if m["type"] == "http.response.start")["status"] == 403
+
+    pooler_ctx = PostgresBudget._ssl_context(
+        "postgresql://ai_budget_worker.ref:pw@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres"
+    )
+    assert pooler_ctx.verify_mode == ssl.CERT_NONE
+    assert pooler_ctx.minimum_version == ssl.TLSVersion.TLSv1_2
+    external_ctx = PostgresBudget._ssl_context("postgresql://u:pw@db.example.org:5432/postgres")
+    assert external_ctx.verify_mode == ssl.CERT_REQUIRED
+

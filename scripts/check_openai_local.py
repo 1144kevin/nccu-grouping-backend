@@ -11,11 +11,16 @@ from dotenv import load_dotenv
 from PIL import Image
 from pydantic import SecretStr
 
-from app.core_cloud.openai_provider import OpenAIDialogue, OpenAIEmbeddingProvider, OpenAIExtractionProvider
 from app.core_cloud.conversation import ConversationInput
-from app.core_cloud.openai_speech import MODEL as SPEECH_MODEL, audio_chunks
-from app.core_cloud.post_writing import WritingInput, draft_post
 from app.core_cloud.intake import IntakeRequest, interpret
+from app.core_cloud.openai_provider import (
+    OpenAIDialogue,
+    OpenAIEmbeddingProvider,
+    OpenAIExtractionProvider,
+)
+from app.core_cloud.openai_speech import MODEL as SPEECH_MODEL
+from app.core_cloud.openai_speech import audio_chunks
+from app.core_cloud.post_writing import WritingInput, draft_post
 
 
 def main():
@@ -52,11 +57,15 @@ def main():
             dialogue = OpenAIDialogue(secret, 'synthetic')
             answer = dialogue.respond(ConversationInput(turns=['我想找人一起喝飲料']))
             print('dialogue:', 'ok' if answer.message else 'failed')
-            picture=io.BytesIO()
-            Image.new('RGB',(32,32),'yellow').save(picture,'JPEG')
-            encoded=base64.b64encode(picture.getvalue()).decode('ascii')
-            result=provider.extract_images([{'role':'user','content':'說明測試圖','images':[encoded,encoded]}], {'type':'object','properties':{'text':{'type':'string'}}}, '回傳 JSON，包含 text。')
-            print('multi-image:', 'ok' if result else 'failed')
+            picture = io.BytesIO()
+            Image.new("RGB", (32, 32), "yellow").save(picture, "JPEG")
+            encoded = base64.b64encode(picture.getvalue()).decode("ascii")
+            result = provider.extract_images(
+                [{"role": "user", "content": "說明測試圖", "images": [encoded, encoded]}],
+                {"type": "object", "properties": {"text": {"type": "string"}}},
+                "回傳 JSON，包含 text。",
+            )
+            print("multi-image:", "ok" if result else "failed")
             return
         result = draft_post(WritingInput(mode="voice", content="想找同學一起吃薯條"), provider)
         print("voice polish:", "ok" if len(result.text) >= 50 else "failed")
@@ -82,6 +91,7 @@ def main():
         print("speech:", "ok" if len(audio) > 0 else "failed")
     except Exception as error:
         from fastapi import HTTPException
+
         from app.stealth.ollama import LocalModelError
 
         if isinstance(error, HTTPException):
