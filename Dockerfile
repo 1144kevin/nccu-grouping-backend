@@ -15,7 +15,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && python -m pip uninstall --yes pip \
     && groupadd --gid 10001 app \
-    && useradd --uid 10001 --gid app --no-create-home app
+    && useradd --uid 10001 --gid app --no-create-home app \
+    && mkdir -p /srv/app/.local/web-push \
+    && chown -R 10001:10001 /srv/app/.local
 COPY --from=builder /srv/app/.venv ./.venv
 COPY --chown=10001:10001 app ./app
 COPY --chown=10001:10001 scripts/run_cloud_core.py ./scripts/run_cloud_core.py

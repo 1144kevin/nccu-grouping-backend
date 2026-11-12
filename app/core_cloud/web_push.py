@@ -5,6 +5,7 @@ import hashlib
 import json
 import secrets
 import sqlite3
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -73,8 +74,17 @@ class PushDevice(Input):
 class WebPushDelivery:
     def __init__(self, settings, root: Path | None = None):
         self.settings = settings
-        self.root = root or ROOT / ".local/web-push"
-        self.root.mkdir(parents=True, exist_ok=True)
+        default_root = ROOT / ".local/web-push"
+        if root is not None:
+            self.root = root
+            self.root.mkdir(parents=True, exist_ok=True)
+        else:
+            try:
+                default_root.mkdir(parents=True, exist_ok=True)
+                self.root = default_root
+            except OSError:
+                self.root = Path(tempfile.gettempdir()) / "nccu-web-push"
+                self.root.mkdir(parents=True, exist_ok=True)
         self.key_path = self.root / "private.pem"
         self.path = self.root / "devices.sqlite3"
         self.lock = threading.Lock()
@@ -156,16 +166,23 @@ class WebPushDelivery:
         session = requests.Session()
         session.trust_env = False
         session.max_redirects = 0
+        callback = (
+            self.settings.core_google_public_web_callback
+            or self.settings.cloud_google_web_callback
+            or (
+                self.settings.backend_cors_origins[0]
+                if self.settings.backend_cors_origins
+                else ""
+            )
+            or self.settings.cloud_public_api_url.removesuffix("/api/v1")
+        )
+        sub = callback.removesuffix("/auth/callback") or "https://nccu-grouping-app.onrender.com"
         try:
             response = webpush(
                 subscription_info=subscription,
                 data=json.dumps(payload, ensure_ascii=False),
                 vapid_private_key=str(self.key_path),
-                vapid_claims={
-                    "sub": self.settings.core_google_public_web_callback.removesuffix(
-                        "/auth/callback"
-                    )
-                },
+                vapid_claims={"sub": sub},
                 timeout=8,
                 ttl=300,
                 headers={"Urgency": "high"},

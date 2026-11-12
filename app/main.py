@@ -25,7 +25,9 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     application.state.web_push = None
     push_thread = None
     settings = application.state.runtime_settings
-    if settings.core_supabase_enabled and settings.environment == "local":
+    if settings.core_supabase_enabled and (
+        settings.environment == "local" or settings.core_cloud_enabled
+    ):
         import threading
 
         from app.core_cloud.web_push import WebPushDelivery
@@ -82,7 +84,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     application.state.stealth_watch = (
         StealthWatch()
-        if settings.core_supabase_enabled and settings.environment == "local"
+        if settings.core_supabase_enabled
+        and (settings.environment == "local" or settings.core_cloud_enabled)
         else None
     )
     application.add_middleware(
