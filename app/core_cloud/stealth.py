@@ -139,8 +139,17 @@ class CloudMatch(BaseModel):
             highlights.append(f"對方今天也會去／經過「{place}」，剛好可以順路一起湊單")
         else:
             highlights.append(f"雙方都方便在「{place}」碰面分攤")
+        ignored_reasons = {
+            "取餐地點一致",
+            "可用時間有交集",
+            "餐點分類符合本人確認的選項",
+            "需求內容的語義相近，細節仍需雙方確認",
+            "透過需求向量搜尋找到，仍須本人確認",
+            "方案預算上限採所有已提供上限中的最低值",
+            "透過本人明確接受的替代類型形成互補方案",
+        }
         for r in self.reasons:
-            if r not in ("取餐地點一致", "可用時間有交集", "餐點分類符合本人確認的選項") and r not in highlights:
+            if r not in ignored_reasons and "向量搜尋" not in r and "語義相近" not in r and r not in highlights:
                 highlights.append(r)
         self.highlights = highlights[:5]
         return self
