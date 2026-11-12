@@ -6,6 +6,7 @@ import json
 import time
 import wave
 
+import httpx
 from fastapi import HTTPException
 from pydantic import SecretStr
 from websockets.sync.client import connect
@@ -13,6 +14,38 @@ from websockets.sync.client import connect
 from app.core_cloud.openai_budget import DEFAULT_LEDGER, LocalBudget, check_rate
 
 MODEL = "gpt-realtime-2.1-mini"
+TTS_FALLBACK_MODEL = "tts-1"
+
+
+def _http_tts_chunks(text: str, key: SecretStr):
+    with httpx.Client(
+        timeout=httpx.Timeout(30, connect=5),
+        trust_env=False,
+        follow_redirects=False,
+    ) as client:
+        with client.stream(
+            "POST",
+            "https://api.openai.com/v1/audio/speech",
+            headers={"Authorization": "Bearer " + key.get_secret_value()},
+            json={
+                "model": TTS_FALLBACK_MODEL,
+                "input": text,
+                "voice": "nova",
+                "response_format": "pcm",
+            },
+        ) as response:
+            if response.status_code != 200:
+                raise ValueError(f"tts_http_{response.status_code}")
+            total = 0
+            for chunk in response.iter_bytes(chunk_size=8192):
+                if not chunk:
+                    continue
+                total += len(chunk)
+                if total > 3 * 1024 * 1024:
+                    raise ValueError("too_large")
+                yield chunk
+            if total == 0:
+                raise ValueError("empty_tts")
 
 
 def audio_chunks(text: str, key: SecretStr, *, connector=connect, budget=None):
@@ -90,6 +123,12 @@ def audio_chunks(text: str, key: SecretStr, *, connector=connect, budget=None):
     except HTTPException:
         raise
     except Exception:
+        if connector is connect:
+            try:
+                yield from _http_tts_chunks(text, key)
+                return
+            except Exception:
+                pass
         raise HTTPException(503, "openai_speech_unavailable") from None
 
 

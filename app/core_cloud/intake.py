@@ -51,13 +51,16 @@ class IntakeFacts(StrictModel):
     cost_needs_clarification: bool = Field(default=False, strict=True)
     roles: list[Role] = Field(default_factory=list, max_length=4)
     roles_confirmed: bool = Field(default=False, strict=True)
+    bonus: str | None = Field(default=None, max_length=80)
     tags: list[Tag] = Field(default_factory=list, max_length=12)
     dietary_requirements: list[Tag] = Field(default_factory=list, max_length=12)
     evidence: IntakeEvidence = Field(default_factory=IntakeEvidence)
 
-    @field_validator("title", "tags", "dietary_requirements")
+    @field_validator("title", "bonus", "tags", "dietary_requirements")
     @classmethod
     def safe_text(cls, value):
+        if value is None:
+            return None
         for text in [value] if isinstance(value, str) else value:
             if "\0" in text:
                 raise ValueError("invalid text")
@@ -179,6 +182,8 @@ budget_unknown 只有本人明確說不知道預算/預算未知才 true，否�
 roles 只含本人明確願意的角色 order 下單/pickup 取餐/coupon 提供優惠券/share 分食。
 「路過」不是承諾取餐；「不取餐」不可含 pickup。沒有表態 roles_confirmed=false。
 若明確回答暫不負責/沒有角色，roles=[] 且 roles_confirmed=true。
+bonus 填寫對話中提到的特別項或誘因（例如「我願意取餐」、「我願意付10%手續費」、「願意多付跑腿費」、「今天會經過COSTCO」等），不限格式；若無特別提及則填 null。
+若使用者對地點、時間或預算回答「都可以」，地點可填 "都可以"，時間可設為全天可配合，預算設 budget_unknown=true。
 tags 只含原文有的中文共同偏好，不要翻譯成英文。飲食限制放 dietary_requirements，不得宣稱已驗證。
 title 用繁體中文簡短重述需求。不猜商家價格、優惠或其他人的意願，只回傳 JSON。"""
 
@@ -291,6 +296,7 @@ def retain_supported_facts(current: IntakeFacts, previous: IntakeFacts, turns: l
         (r"我有|我需要|我想|資源|提供|計畫|打算|改成|改要", ("kind",), None),
         (r"標籤|偏好|喜歡|不喜歡", ("tags",), None),
         (r"飲食|過敏|素食|花生|忌口|不能吃|不吃", ("dietary_requirements",), None),
+        (r"手續費|跑腿費|多付|貼補|小費|順路|經過|幫忙|bonus", ("bonus",), None),
     ]
     for topic, fields, evidence in groups:
         if fields == ("location_id",) and current.location_id is not None:
@@ -366,7 +372,7 @@ def ground(facts: IntakeFacts, original: str) -> list[str]:
                 facts.budget_max_twd = amount
                 facts.budget_unknown = False
                 facts.evidence.budget = change.group()
-    location_names = ALIASES
+    location_names = {**ALIASES, "都可以": ("都可以", "哪裡都可以", "地點都可以", "不限地點", "地點不限")}
     if facts.location_id is not None:
         mentions = [
             match
@@ -527,4 +533,31 @@ def ground(facts: IntakeFacts, original: str) -> list[str]:
         facts.duration_minutes = 1440
         facts.delay_minutes = 0
         facts.evidence.duration = full_day[1]
+    facts.bonus = extract_bonus(original, facts.roles, facts.bonus)
     return list(dict.fromkeys(warnings))
+
+
+def extract_bonus(original: str, roles: list[str], existing: str | None = None) -> str | None:
+    perks: list[str] = []
+    role_labels = {"order": "願意下單", "pickup": "願意取餐", "coupon": "提供優惠券", "share": "一起分食"}
+    for role in roles:
+        if role in ("order", "pickup", "coupon"):
+            perks.append("我" + role_labels[role])
+    for pattern in (
+        r"(?:我)?(?:願意|可以|能)?[^，。；\n]{0,14}(?:\d+\s*%|百分之\d+|\d+\s*(?:元|塊))?[^，。；\n]{0,8}(?:手續費|跑腿費|小費|代購費)",
+        r"(?:我)?(?:願意|可以|能)?(?:多付|多出|加付|貼補)[^，。；\n]{1,14}",
+        r"(?:我)?(?:今天|等等|待會)?(?:會|要)(?:順路)?(?:經過|去)\s*(?:好市多|Costco|COSTCO|全聯|家樂福|麥當勞|肯德基|星巴克|50嵐|迷客夏|可不可)[^，。；\n]{0,8}",
+        r"(?:我)?(?:手上)?有[^，。；\n]{0,12}(?:買一送一|優惠券|折價券|好市多卡|會員卡)",
+    ):
+        for match in re.finditer(pattern, original):
+            clause = match.group().strip(" ，。；\n")
+            if clause and not re.search(r"不願意|不要|不想|沒有|無法", clause):
+                if clause not in perks:
+                    perks.append(clause)
+    if existing:
+        cleaned = existing.strip()
+        if cleaned and cleaned in original and cleaned not in perks:
+            perks.insert(0, cleaned)
+    if not perks:
+        return None
+    return "、".join(dict.fromkeys(perks))[:80]

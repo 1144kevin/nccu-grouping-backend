@@ -91,9 +91,31 @@ def inbox(
     cursor: Annotated[str | None, Query(max_length=1000)] = None,
     deleted: bool = False,
 ):
-    return social(
+    page = social(
         store, "list", {"kind": kind, "limit": limit, "cursor": cursor, "deleted": deleted}
     )
+    if isinstance(page, dict) and isinstance(page.get("items"), list):
+        filtered = []
+        removed_unread = 0
+        for item in page["items"]:
+            post = item.get("post") if isinstance(item, dict) else None
+            tags = post.get("tags") if isinstance(post, dict) else None
+            if (
+                isinstance(item, dict)
+                and item.get("kind") == "group"
+                and isinstance(tags, list)
+                and "偷揪成團" in tags
+            ):
+                removed_unread += int(item.get("unread_count") or 0)
+                continue
+            filtered.append(item)
+        if len(filtered) != len(page["items"]):
+            page = {
+                **page,
+                "items": filtered,
+                "total_unread": max(0, int(page.get("total_unread") or 0) - removed_unread),
+            }
+    return page
 
 
 @router.patch("/inbox/{kind}/{thread_id}", response_model=Thread)

@@ -9,7 +9,7 @@ from pydantic import Field, field_validator, model_validator
 
 from app.core_cloud.availability import all_day, participation_preference
 from app.core_cloud.grounding import denied_roles, personal_role_evidence, supported_roles
-from app.core_cloud.intake import IntakeFacts, IntakeQuestion, IntakeRequest, review
+from app.core_cloud.intake import IntakeFacts, IntakeQuestion, IntakeRequest, extract_bonus, review
 from app.core_cloud.stealth import CloudAgentInput, CloudSignalCreated, CloudSignalInput
 from app.stealth.ai import OfflineDraftProvider
 from app.stealth.ollama import LocalModelError
@@ -105,6 +105,14 @@ def keyword_facts(turns):
                 roles |= supported_roles(clause) - denied_roles(clause)
     facts.roles = sorted(roles)
     facts.roles_confirmed = bool(roles)
+    if facts.category is None:
+        if re.search(r"好市多|Costco|COSTCO|全聯|家樂福", original):
+            facts.category = "snack"
+        elif re.search(r"麥當勞|肯德基|摩斯|Subway|火鍋|拉麵|壽司|滷味|雞排|鹹酥雞", original, re.IGNORECASE):
+            facts.category = "meal"
+        elif re.search(r"星巴克|路易莎|得正|一沐日|鶴茶樓", original):
+            facts.category = "drink"
+    facts.bonus = extract_bonus(original, facts.roles, facts.bonus)
     facts.kind = (
         "plan"
         if "pickup" in roles and re.search(r"順路|路過|經過", original)
@@ -217,8 +225,25 @@ def prepare(text, history, *, interpreter=None, now=None, facts=None, original=N
     budget = facts.budget_max_twd
     if budget is None and not facts.budget_unknown and previous:
         budget = previous.budget_max_twd
-    base_tags = [tag for tag in facts.tags if not tag.startswith("品牌:")] or [category]
-    tags = list(dict.fromkeys([*(["品牌:" + brand] if brand else []), *base_tags]))[:12]
+    base_tags = [
+        tag for tag in facts.tags if not tag.startswith("品牌:") and not tag.startswith("BONUS:")
+    ] or [category]
+    bonus_text = facts.bonus or extract_bonus(original or text, facts.roles, None)
+    custom_bonus = (
+        bonus_text
+        if bonus_text
+        and re.search(r"手續費|跑腿費|小費|代購費|多付|多出|加付|貼補|經過|去\s*(?:好市多|Costco|COSTCO|全聯|家樂福)|好市多卡|會員卡", bonus_text)
+        else None
+    )
+    tags = list(
+        dict.fromkeys(
+            [
+                *(["品牌:" + brand] if brand else []),
+                *(["BONUS:" + custom_bonus[:25]] if custom_bonus else []),
+                *base_tags,
+            ]
+        )
+    )[:12]
     value = CloudSignalInput(
         kind=(
             facts.kind

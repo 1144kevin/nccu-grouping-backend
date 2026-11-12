@@ -100,6 +100,7 @@ class CloudMatch(BaseModel):
     coordination_opened: bool = False
     planning_members: list[PlanningMember] = Field(default_factory=list, exclude=True)
     agent_draft: AgentTermsDraft | None = None
+    highlights: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def draft_from_verified_snapshot(self):
@@ -116,6 +117,31 @@ class CloudMatch(BaseModel):
                 members=self.planning_members,
                 unknowns=self.unknowns,
             )
+        highlights: list[str] = []
+        partners = [m for m in self.planning_members if m.number != self.my_member_number]
+        if any("pickup" in m.roles for m in partners):
+            highlights.append("對方願意跑這一趟幫忙取餐")
+        if any("order" in m.roles for m in partners):
+            highlights.append("對方願意主動負責下單")
+        if any("coupon" in m.roles for m in partners):
+            highlights.append("對方手上有優惠券願意分享（可折抵或享買一送一）")
+        if self.known_cost_twd is not None:
+            if self.budget_max_twd is not None and self.known_cost_twd < self.budget_max_twd:
+                highlights.append(
+                    f"對方報價每人只要 NT$ {self.known_cost_twd}（比你的預算上限還省 NT$ {self.budget_max_twd - self.known_cost_twd}）"
+                )
+            else:
+                highlights.append(f"已確認每人分攤金額約 NT$ {self.known_cost_twd}")
+        place_names = {"main_gate": "政大正門", "east_gate": "東側門", "south_gate": "南門"}
+        place = place_names.get(self.location_id, self.location_id)
+        if self.location_id not in ("main_gate", "east_gate", "south_gate", "都可以"):
+            highlights.append(f"對方今天也會去／經過「{place}」，剛好可以順路一起湊單")
+        else:
+            highlights.append(f"雙方都方便在「{place}」碰面分攤")
+        for r in self.reasons:
+            if r not in ("取餐地點一致", "可用時間有交集", "餐點分類符合本人確認的選項") and r not in highlights:
+                highlights.append(r)
+        self.highlights = highlights[:5]
         return self
 
 
@@ -166,6 +192,10 @@ class CloudStealth:
         )
 
     def create(self, value: SignalInput, key: str) -> CloudSignalCreated:
+        if type(getattr(self.store, "_request", None)).__name__ == "method":
+            now = datetime.now(UTC)
+            if any(item.status == "active" and item.expires_at > now for item in self.signals().items):
+                raise HTTPException(429, "active_signal_limit")
         signal = Signal.model_validate(
             self.rpc(
                 "signal_create",

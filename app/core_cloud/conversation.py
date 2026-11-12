@@ -109,21 +109,24 @@ OPTIONS = {
         ("政大正門", "取餐地點在政大正門"),
         ("東側門", "取餐地點在政大東側門"),
         ("南門", "取餐地點在政大南門"),
+        ("都可以", "取餐地點都可以"),
     ],
     "delay_minutes": [
         ("現在就可以", "從現在0分鐘後開始"),
         ("半小時後", "從現在30分鐘後開始"),
         ("一小時後", "從現在60分鐘後開始"),
+        ("都可以", "從現在0分鐘後開始，時間都可以"),
     ],
     "duration_minutes": [
         ("半小時", "可以配合30分鐘"),
         ("一小時", "可以配合60分鐘"),
         ("先找兩小時", "可以配合120分鐘"),
+        ("都可以", "可以配合120分鐘，時間都可以"),
     ],
     "budget_max_twd": [
         ("80 元內", "我的預算上限是80元"),
         ("120 元內", "我的預算上限是120元"),
-        ("還不確定", "我的預算未知"),
+        ("都可以", "我的預算未知"),
     ],
     "roles": [
         ("我可以下單", "我願意下單"),
@@ -158,10 +161,25 @@ def contextual_turn(turn, field):
         return "我的預算上限是" + answer.rstrip("元塊") + "元"
     if field in ("cost_basis", "known_cost_twd") and re.fullmatch(r"\d{1,6}(?:元|塊)?", answer):
         return "每人費用是" + answer.rstrip("元塊") + "元"
-    if field == "budget_max_twd" and answer in ("不知道", "還不知道", "不確定", "還沒決定"):
+    if field == "budget_max_twd" and answer in (
+        "不知道",
+        "還不知道",
+        "不確定",
+        "還沒決定",
+        "都可以",
+        "都行",
+        "不限",
+        "隨便",
+    ):
         return "我的預算未知"
-    if field == "delay_minutes" and answer in ("現在", "馬上", "現在就可以"):
+    if field == "location_id" and answer in ("都可以", "都行", "不限", "隨便", "哪裡都可以"):
+        return "取餐地點都可以"
+    if field == "delay_minutes" and answer in ("現在", "馬上", "現在就可以", "都可以", "都行", "隨時"):
         return "從現在0分鐘後開始"
+    if field == "duration_minutes" and answer in ("都可以", "都行", "不限", "隨便"):
+        return "可以配合120分鐘"
+    if field == "roles" and answer in ("都可以", "都行", "隨便", "不限"):
+        return "我暫不負責任何分工"
     if field == "duration_minutes" and re.fullmatch(
         r"[一二兩三四五六七八九十半個\d]+(?:分鐘|小時)", answer
     ):
@@ -217,6 +235,7 @@ def quick_answer(value, turns):
             "取餐地點在政大正門": "main_gate",
             "取餐地點在政大東側門": "east_gate",
             "取餐地點在政大南門": "south_gate",
+            "取餐地點都可以": "都可以",
         }[latest]
     elif field == "delay_minutes":
         facts.delay_minutes = int(re.search(r"\d+", latest).group())
@@ -351,6 +370,16 @@ def converse(
     )
     if natural_allowed:
         next_field = natural.question_field
+        if (
+            next_field is None
+            and not revoked
+            and len(turns) < 2
+            and facts.location_id is None
+            and facts.delay_minutes is None
+            and facts.budget_max_twd is None
+            and not facts.budget_unknown
+        ):
+            next_field = "location_id"
     question = None
     if next_field:
         question = IntakeQuestion(field=next_field, text=QUESTIONS[next_field])
