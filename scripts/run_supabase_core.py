@@ -14,8 +14,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="Validate settings without listening")
     parser.add_argument(
-        "--ai-provider", choices=("gemini", "openai"), default="gemini",
-        help="Select the AI provider. OpenAI is a local prototype only.",
+        "--ai-provider", choices=("gemini", "openai"), default="openai",
+        help="Select the AI provider.",
     )
     args = parser.parse_args()
     os.chdir(ROOT)
@@ -60,13 +60,10 @@ def main() -> None:
     os.environ["STEALTH_CONVERSATION_PROVIDER"] = args.ai_provider
     os.environ["STEALTH_SEMANTIC_ENABLED"] = "true"
     if args.ai_provider == "openai":
-        if not args.check:
-            raise RuntimeError(
-                "OpenAI local prototype cannot start against the shared Supabase project. "
-                "Use isolated tests until a separate test database is configured."
-            )
         private_config = dotenv_values(ROOT / ".local" / "openai-local.env")
         os.environ["LOCAL_OPENAI_API_KEY"] = private_config.get("OPENAI_API_KEY", "") or ""
+        os.environ["STEALTH_EMBEDDING_PROVIDER"] = "openai"
+        os.environ["CLOUD_OPENAI_SCHEMA_READY"] = "true"
     os.environ["ENVIRONMENT"] = "local"
     os.environ["CORE_LOCAL_ENABLED"] = "false"
     os.environ["CORE_SUPABASE_ENABLED"] = "true"
