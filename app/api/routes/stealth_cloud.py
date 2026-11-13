@@ -20,6 +20,7 @@ from app.core_cloud.openai_provider import (
     OpenAIExtractionProvider,
     OpenAIIntentInterpreter,
 )
+from app.core_cloud.planner_ai import AiDraftResponse, polish_match_draft
 from app.core_cloud.quick_stealth import QuickInterview, QuickResult, QuickStart
 from app.core_cloud.quick_stealth import interview as quick_interview
 from app.core_cloud.quick_stealth import start as quick_start
@@ -491,3 +492,23 @@ def terms(proposal_id: UUID, value: TermsRequest, service: Cloud):
 @router.post("/matches/{proposal_id}/consent", response_model=CloudMatch)
 def consent(proposal_id: UUID, value: ConsentRequest, service: Cloud):
     return service.formation("consent", proposal_id, value.expected_revision, agree=value.agree)
+
+
+draft_ai_quota = WindowQuota()
+
+
+@router.post("/matches/{proposal_id}/draft-ai", response_model=AiDraftResponse)
+def draft_ai(proposal_id: UUID, service: Cloud, request: Request, user: UserDep):
+    match = next((m for m in service.matches().items if m.id == proposal_id), None)
+    if match is None:
+        raise HTTPException(404, "proposal_not_found")
+    if match.agent_draft is None:
+        raise HTTPException(409, "draft_unavailable")
+    if not draft_ai_quota.allow(("draft-ai", str(user.id)), 6):
+        return AiDraftResponse(
+            draft=match.agent_draft,
+            fallback=True,
+            notice="AI 整理請求過於頻繁，已先顯示系統規則整理的暫定方案，仍可直接查看或手動修改。",
+        )
+    settings = getattr(request.state, "runtime_settings", None) or get_settings()
+    return polish_match_draft(match, settings=settings)

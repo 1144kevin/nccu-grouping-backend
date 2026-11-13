@@ -144,3 +144,64 @@ def test_automatic_draft_is_person_independent_private_text_free_and_read_only()
 @pytest.mark.parametrize("status", ["formed", "unavailable"])
 def test_no_new_draft_for_formed_or_invalidated_proposal(status):
     assert CloudMatch.model_validate({**match_value(), "status": status}).agent_draft is None
+
+
+def test_grounded_confirmed_facts_and_ai_fallback_never_invent_price_or_roles():
+    from types import SimpleNamespace
+    from app.core_cloud.planner_ai import polish_match_draft
+    from app.stealth.ollama import LocalModelError
+
+    match = CloudMatch.model_validate(
+        {
+            **match_value(),
+            "known_cost_twd": None,
+            "budget_max_twd": 150,
+            "planning_members": [
+                {"number": 1, "roles": ["share"]},
+                {"number": 2, "roles": ["share"]},
+            ],
+            "reasons": ["對方剛好順路去政大正門", "透過需求向量搜尋找到，仍須本人確認"],
+        }
+    )
+    assert match.agent_draft is not None
+    assert match.agent_draft.cost_per_person_twd is None
+    assert match.agent_draft.budget_limit_twd == 150
+    assert match.agent_draft.order_member is None and match.agent_draft.pickup_member is None
+    assert any("預算上限：NT$ 150" in f for f in match.agent_draft.confirmed_facts)
+    assert match.agent_draft.recommendation_reasons == ["對方剛好順路去政大正門"]
+
+    class FakeTransport:
+        def __init__(self, result=None, error=None):
+            self.calls = 0
+            self.result = result
+            self.error = error
+
+        def request(self, *_args, **_kwargs):
+            self.calls += 1
+            if self.error:
+                raise self.error
+            return self.result
+
+    ok = FakeTransport(
+        result={
+            "output_text": '{"content":"雙方皆希望在政大正門一起分享披薩，費用與分工進聊天室後確認。","recommendation_reasons":["順路去政大正門"],"needs_confirmation":["確認實際每人費用","確認下單與取餐分工"]}'
+        }
+    )
+    res = polish_match_draft(
+        match,
+        settings=SimpleNamespace(stealth_ai_provider="openai", environment="local", core_cloud_enabled=True),
+        transport=ok,
+    )
+    assert not res.fallback and ok.calls == 1
+    assert res.draft.cost_per_person_twd is None
+    assert res.draft.order_member is None and res.draft.pickup_member is None
+
+    quota = FakeTransport(error=LocalModelError("openai_budget_exceeded"))
+    fb = polish_match_draft(
+        match,
+        settings=SimpleNamespace(stealth_ai_provider="openai", environment="local", core_cloud_enabled=True),
+        transport=quota,
+    )
+    assert fb.fallback and quota.calls == 1
+    assert "額度" in fb.notice
+    assert fb.draft.cost_per_person_twd is None

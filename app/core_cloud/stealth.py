@@ -113,10 +113,12 @@ class CloudMatch(BaseModel):
                 location=self.location_id,
                 cost=self.known_cost_twd,
                 budget=self.budget_max_twd,
+                starts_at=self.starts_at,
                 ends_at=self.ends_at,
                 member_count=self.member_count,
                 members=self.planning_members,
                 unknowns=self.unknowns,
+                reasons=self.reasons,
             )
         highlights: list[str] = []
         partners = [m for m in self.planning_members if m.number != self.my_member_number]

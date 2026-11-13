@@ -19,18 +19,22 @@ class RoleSuggestion(BaseModel):
 
 
 class AgentTermsDraft(BaseModel):
-    provider: Literal["offline_rules_v1"] = "offline_rules_v1"
-    is_llm: Literal[False] = False
+    provider: Literal["offline_rules_v1", "openai_summary_v1"] = "offline_rules_v1"
+    is_llm: bool = False
     content: str
     cost_per_person_twd: int | None
     total_cost_twd: int | None
     cost_basis: Literal["known_cost", "unknown"]
     budget_limit_twd: int | None
+    starts_at: AwareDatetime | None = None
     deadline_at: AwareDatetime
+    location_label: str = ""
     order_member: int | None
     pickup_member: int | None
     role_suggestions: list[RoleSuggestion]
     missing_fields: list[Literal["cost", "order", "pickup"]]
+    confirmed_facts: list[str] = Field(default_factory=list)
+    recommendation_reasons: list[str] = Field(default_factory=list)
     needs_confirmation: list[str]
     ready_to_submit: bool
 
@@ -45,6 +49,8 @@ def plan_terms(
     member_count: int,
     members: list[PlanningMember],
     unknowns: list[str],
+    starts_at: AwareDatetime | None = None,
+    reasons: list[str] | None = None,
 ) -> AgentTermsDraft:
     """Same snapshot yields the same proposal for every participant. Unknown != zero."""
     # Fail closed if a partial/malformed context is supplied; never guess other volunteers.
@@ -106,17 +112,55 @@ def plan_terms(
             ]
         )
     )
+    confirmed_facts = [
+        f"需求品類：{category_label}",
+        f"共同地點：{place}",
+    ]
+    if starts_at is not None:
+        confirmed_facts.append("已確認雙方有重疊的可配合時段")
+    if cost is not None:
+        confirmed_facts.append(f"已提供每人費用：NT$ {cost}")
+    elif budget is not None:
+        confirmed_facts.append(f"已提供預算上限：NT$ {budget}（僅作預算參考，非實際費用）")
+    if facts_valid:
+        for member in members:
+            if "order" in member.roles:
+                confirmed_facts.append(f"夥伴 {member.number} 表示願意負責購買／下單")
+            if "pickup" in member.roles:
+                confirmed_facts.append(f"夥伴 {member.number} 表示願意負責取餐")
+            if "coupon" in member.roles:
+                confirmed_facts.append(f"夥伴 {member.number} 表示手上有優惠券可分享")
+
+    ignored = {
+        "取餐地點一致",
+        "可用時間有交集",
+        "餐點分類符合本人確認的選項",
+        "需求內容的語義相近，細節仍需雙方確認",
+        "透過需求向量搜尋找到，仍須本人確認",
+        "方案預算上限採所有已提供上限中的最低值",
+        "透過本人明確接受的替代類型形成互補方案",
+    }
+    recommendation_reasons = [
+        r
+        for r in dict.fromkeys(reasons or [])
+        if r and r not in ignored and "向量搜尋" not in r and "語義相近" not in r
+    ][:4]
+
     return AgentTermsDraft(
         content=content,
         cost_per_person_twd=cost,
         total_cost_twd=None if cost is None else cost * member_count,
         cost_basis="unknown" if cost is None else "known_cost",
         budget_limit_twd=budget,
+        starts_at=starts_at,
         deadline_at=ends_at,
+        location_label=place,
         order_member=chosen_order,
         pickup_member=chosen_pickup,
         role_suggestions=suggestions,
         missing_fields=missing,
+        confirmed_facts=confirmed_facts,
+        recommendation_reasons=recommendation_reasons,
         needs_confirmation=confirmations,
         ready_to_submit=not missing,
     )
