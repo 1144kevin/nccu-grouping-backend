@@ -59,6 +59,9 @@ class StealthWatch:
                 ):
                     self.unsubscribe(actor)
                     continue
+                matches_fn = getattr(service, "matches", None)
+                if callable(matches_fn) and any(m.status == "ready" for m in matches_fn().items):
+                    continue
                 service.run(3)
             except HTTPException as error:
                 if error.status_code in (401, 403, 404, 429) or error.detail in (

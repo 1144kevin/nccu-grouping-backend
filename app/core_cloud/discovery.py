@@ -51,7 +51,37 @@ def index_active_signals(service, embeddings: EmbeddingProvider, *, require_quer
     return signals, queries if require_query else documents, indexed["indexed"]
 
 
+def _signal_locked_in_chat(service, signals) -> bool:
+    matches_fn = getattr(service, "matches", None)
+    if not callable(matches_fn):
+        return False
+    try:
+        items = matches_fn().items
+    except Exception:
+        return False
+    if not isinstance(items, list):
+        return False
+    return any(
+        getattr(m, "status", None) == "ready"
+        or (
+            getattr(m, "status", None) == "formed"
+            and any(
+                s.title == getattr(m, "my_signal_title", None)
+                and getattr(m, "created_at", s.created_at) >= s.created_at
+                for s in signals
+            )
+        )
+        for m in items
+    )
+
+
 def discover(service, embeddings: EmbeddingProvider, maximum=3):
+    now = datetime.now(UTC)
+    active_signals = [s for s in service.signals().items if s.status == "active" and s.expires_at > now][
+        :10
+    ]
+    if not active_signals or _signal_locked_in_chat(service, active_signals):
+        return {"created": 0, "indexed": 0, "requires_unanimous_confirmation": True}
     signals, queries, indexed = index_active_signals(service, embeddings, require_query=True)
     if not signals:
         return {"created": 0, "indexed": 0, "requires_unanimous_confirmation": True}

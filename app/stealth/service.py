@@ -178,9 +178,15 @@ class StealthService:
             unit.event(actor, "match_run", now)
             proposals = unit.all("proposals")
             seen = {p.fingerprint for p in proposals}
+            locked_signal_ids = {
+                m.signal_id
+                for p in proposals
+                if p.status in (ProposalStatus.READY, ProposalStatus.FORMED)
+                for m in p.members
+            }
             candidates = find_candidates(
                 actor,
-                unit.all("signals"),
+                [s for s in unit.all("signals") if s.id not in locked_signal_ids],
                 agents,
                 unit.blocked_pairs(),
                 now,

@@ -187,6 +187,23 @@ def test_matching_is_not_capped_by_daily_invite_limit(service):
     assert len(service.run_matches(users[0], 5, NOW)) == 3
 
 
+def test_signal_in_ready_chat_cannot_match_another_signal(service):
+    users, _ = setup_group(service)
+    proposals = service.run_matches(users[0], 5, NOW)
+    first = proposals[0]
+    accepted_users = set()
+    for u in users:
+        try:
+            view = service.decide(u, first.id, "accepted", None, NOW)
+            accepted_users.add(u)
+            if view.status == "ready":
+                break
+        except StealthError:
+            pass
+    other = next(u for u in users if u not in accepted_users)
+    assert service.run_matches(other, 5, NOW + timedelta(seconds=31)) == []
+
+
 def test_revoke_is_idempotent_and_invalidates(service):
     users, signals = setup_group(service, ("need", "offer"))
     proposal = service.run_matches(users[0], 1, NOW)[0]
