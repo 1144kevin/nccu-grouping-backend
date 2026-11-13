@@ -8,6 +8,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from pydantic import Field, field_validator
 
+from app.core_cloud.taiwan_geo import filter_posts_by_regions
 from app.core_local.schemas import FeedSemanticInfo, RecommendationPage, RecommendedPostView
 from app.stealth.ollama import LocalModelError
 from app.stealth.schemas import StrictModel
@@ -41,7 +42,7 @@ class FeedValidationRequest(StrictModel):
     preference_version: int = Field(ge=0, strict=True)
 
 
-def eligible_pool(service):
+def eligible_pool(service, preferred_tags: list[str] | None = None):
     """Use the existing RPC, including its blocks, hidden posts and session checks."""
     posts, cursor = [], None
     for _ in range(POOL_LIMIT // PAGE_SIZE):
@@ -64,7 +65,7 @@ def eligible_pool(service):
         for p in posts
         if p.status == "open" and p.joined < p.capacity and p.deadline_at > now
     }
-    return list(unique.values()), bool(cursor)
+    return filter_posts_by_regions(list(unique.values()), preferred_tags or []), bool(cursor)
 
 
 def document(post: RecommendedPostView):
@@ -85,7 +86,8 @@ def unchanged(a, b):
 
 def semantic_feed(service, query: str, provider_factory):
     preferences = service.preferences()
-    before, truncated = eligible_pool(service)
+    preferred_tags = getattr(preferences, "preferred_tags", None) or []
+    before, truncated = eligible_pool(service, preferred_tags)
     if not before:
         return FeedSemanticPage(
             items=[], status="empty", candidate_count=0, truncated=truncated,
@@ -125,8 +127,10 @@ def semantic_feed(service, query: str, provider_factory):
             FEED_SLOT.release()
 
     # Re-read using the caller's session AFTER inference, including on fallback.
-    fresh, fresh_truncated = eligible_pool(service)
-    if service.preferences().version != preferences.version:
+    fresh_prefs = service.preferences()
+    fresh_tags = getattr(fresh_prefs, "preferred_tags", None) or []
+    fresh, fresh_truncated = eligible_pool(service, fresh_tags)
+    if fresh_prefs.version != preferences.version:
         raise HTTPException(409, "recommendations_changed_reload")
     previous = {p.id: p for p in before}
     items = [p for p in fresh if p.id in previous and unchanged(previous[p.id], p)]
