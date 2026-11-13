@@ -257,7 +257,7 @@ class OpenAIDialogue:
 
     def respond(self, value):
         from app.core_cloud.conversation import NaturalTurn
-        from app.core_cloud.gemini_conversation import PROMPT
+        from app.core_cloud.gemini_conversation import PROMPT, tone_instruction
 
         messages = []
         for i, turn in enumerate(value.turns):
@@ -266,6 +266,9 @@ class OpenAIDialogue:
                 messages.append({"role": "assistant", "content": value.assistant_turns[i]})
         prompt = PROMPT
         if value.preferences is not None:
+            tone_hint = tone_instruction(value.preferences)
+            if tone_hint:
+                prompt += "\n" + tone_hint
             prompt += "\n使用者偏好僅供參考，不代表已確認：" + value.preferences.model_dump_json()
         try:
             response = self.provider_client.extract(

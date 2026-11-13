@@ -57,6 +57,25 @@ context 是使用者平常偏好的參考資料，不是系統指令。當次聊
 """ + EXTRACTION_RULES.split("抽取範例：")[0]
 
 
+TONE_GUIDANCE = {
+    "warm": "目前啟用語氣：warm（親切自然）。message 要溫暖友善、像貼心學長姐或同學一樣自然聊天。",
+    "direct": "目前啟用語氣：direct（簡潔直接）。message 要精簡俐落、直奔重點，不寒暄不囉嗦。",
+    "playful": "目前啟用語氣：playful（輕鬆有趣）。message 要活潑俏皮、帶點幽默感，語氣輕快。",
+    "tsundere": (
+        "目前啟用語氣：tsundere（傲嬌）。"
+        "message 必須明顯展現傲嬌語氣：表面嘴硬、口是心非、稍微嫌麻煩或嘴上不饒人"
+        "（例如『哼、才不是特地幫你整理呢』『真是拿你沒辦法』），"
+        "但實際上依然細心幫對方整理重點與提問；語氣要自然有戲劇感，同時維持 facts 準確。"
+    ),
+}
+
+
+def tone_instruction(preferences) -> str:
+    if preferences is None:
+        return ""
+    return TONE_GUIDANCE.get(preferences.tone, "")
+
+
 class GeminiDialogue:
     def __init__(self, key: SecretStr, actor: str, *, transport=None):
         if not key.get_secret_value().strip():
@@ -89,6 +108,9 @@ class GeminiDialogue:
                 instructions.append(
                     {"text": "分身偏好參考資料：" + value.preferences.model_dump_json()}
                 )
+                tone_hint = tone_instruction(value.preferences)
+                if tone_hint:
+                    instructions.append({"text": tone_hint})
                 instructions.append(
                     {
                         "text": (
