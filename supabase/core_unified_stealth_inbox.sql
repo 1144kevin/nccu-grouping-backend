@@ -108,7 +108,7 @@ begin
     raise exception using errcode='PT422',message='invalid_social_cursor'; end if;
   end if;
   with candidates as (
-   select 'group' kind,pp.id from public.core_posts pp where k in ('all','primary','group') and (pp.author_id=actor or exists(select 1 from public.core_join_requests j where j.post_id=pp.id and j.requester_id=actor and j.status='accepted'))
+   select 'group' kind,pp.id from public.core_posts pp where k in ('all','primary','group') and not coalesce(pp.payload->'tags','[]'::jsonb) ? '偷揪成團' and (pp.author_id=actor or exists(select 1 from public.core_join_requests j where j.post_id=pp.id and j.requester_id=actor and j.status='accepted'))
    union all select 'direct',dd.id from public.core_direct_threads dd where k in ('all','primary','direct') and actor in (dd.host_id,dd.guest_id)
    union all select 'stealth',sp.id from public.core_stealth_proposals sp where k in ('all','primary','group') and actor=any(sp.owners)
   ), visible as (
