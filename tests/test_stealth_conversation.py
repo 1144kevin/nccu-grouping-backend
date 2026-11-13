@@ -190,3 +190,53 @@ def test_context_is_bounded_and_model_outage_never_discards_followups():
     with pytest.raises(HTTPException) as error:
         converse(Mock(), ConversationInput(turns=["想喝飲料", "改到東側門"]))
     assert error.value.detail == "quick_interview_unavailable"
+
+
+def test_clock_window_and_custom_dorm_location_are_preserved_without_redundant_delay_question():
+    from datetime import datetime, timezone
+    from zoneinfo import ZoneInfo
+
+    from app.core_cloud.conversation import NaturalTurn
+
+    # 14:24 Taipei == 06:24 UTC
+    taipei_now = datetime(2026, 11, 13, 14, 24, tzinfo=ZoneInfo("Asia/Taipei")).astimezone(
+        timezone.utc
+    )
+    dialogue = Mock()
+    dialogue.provider = "openai"
+    dialogue.respond.return_value = NaturalTurn(
+        message="你希望從現在起大約多久後開始約？",
+        question_field="delay_minutes",
+        facts=IntakeFacts(
+            title="找人一起吃麥當勞薯條和漢堡",
+            kind="need",
+            category="meal",
+            location_id="政大自強十舍門口",
+            delay_minutes=None,
+            duration_minutes=None,
+            budget_max_twd=200,
+        ),
+    )
+    result = converse(
+        Mock(),
+        ConversationInput(
+            turns=[
+                "想找人一起吃麥當勞薯條和漢堡",
+                "今天晚上6點到8點之間都可以",
+                "我現在在政大自強十舍，希望可以在宿舍門口拿餐",
+                "我晚點預算最多200，如果有人幫忙跑腿，我可以另外補貼30",
+            ],
+            answer_fields=[None, None, None, None],
+        ),
+        dialogue=dialogue,
+        now=taipei_now,
+    )
+    assert result.facts.location_id == "政大自強十舍"
+    assert result.facts.delay_minutes == 216
+    assert result.facts.duration_minutes == 120
+    assert result.question is None or result.question.field != "delay_minutes"
+    assert result.signal is not None
+    assert result.signal.location_id == "政大自強十舍"
+    assert result.signal.starts_at == datetime(2026, 11, 13, 18, 0, tzinfo=ZoneInfo("Asia/Taipei")).astimezone(timezone.utc)
+    assert result.signal.ends_at == datetime(2026, 11, 13, 20, 0, tzinfo=ZoneInfo("Asia/Taipei")).astimezone(timezone.utc)
+

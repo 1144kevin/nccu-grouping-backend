@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 
+from app.core_cloud.availability import extract_clock_window
 from app.core_cloud.grounding import denied_roles, personal_role_evidence, supported_roles
 from app.core_cloud.intake import (
     IntakeFacts,
@@ -327,6 +328,14 @@ def converse(
         facts.cost_needs_clarification = False
     if latest_brand(original):
         facts.category = "drink"
+    if facts.delay_minutes is None:
+        clock = extract_clock_window(original, now=now)
+        if clock:
+            facts.delay_minutes = clock[0]
+            facts.evidence.start = clock[2]
+            if clock[1] is not None and facts.duration_minutes is None:
+                facts.duration_minutes = clock[1]
+                facts.evidence.duration = clock[2]
     all_questions = {q.field: q for q in review(facts, "guided").questions}
     priority = [
         "category",
@@ -365,8 +374,21 @@ def converse(
         if "known_cost_twd" in all_questions
         else None
     )
-    natural_allowed = natural is not None and (
-        essential is None or natural.question_field == essential
+    natural_resolved = bool(
+        natural is not None
+        and (
+            (natural.question_field == "delay_minutes" and facts.delay_minutes is not None)
+            or (
+                natural.question_field == "duration_minutes"
+                and facts.duration_minutes is not None
+            )
+            or (natural.question_field == "location_id" and facts.location_id is not None)
+        )
+    )
+    natural_allowed = (
+        natural is not None
+        and not natural_resolved
+        and (essential is None or natural.question_field == essential)
     )
     if natural_allowed:
         next_field = natural.question_field

@@ -171,7 +171,7 @@ acceptable_categories 只列本人明確接受的其他類型；資源 offer 不
 location_id: 政大正門用main_gate，東側門用east_gate，南門用south_gate。
 其他地點保留使用者原文店名、地址或地標，不限這三個地點。
 delay_minutes 是從現在多久後開始，duration_minutes 是可配合長度。1小時=60分鐘。
-今晚/明天幾點等絕對或模糊時間不能自行換算，delay_minutes=null，需補問相對時間。
+若使用者已說今天/明天幾點或幾點到幾點（例如「今天晚上6點到8點」），請將該原句填入 evidence.start，不可重複追問「大約多久後開始約」。
 budget_max_twd 是每人預算上限，known_cost_twd 是已確認每人報價，兩者不同。
 budget_unknown 只有本人明確說不知道預算/預算未知才 true，否則 false。
 若提供的是總價、整團價格或無法判斷每人金額，known_cost_twd=null 且 cost_needs_clarification=true。
@@ -374,21 +374,26 @@ def ground(facts: IntakeFacts, original: str) -> list[str]:
                 facts.evidence.budget = change.group()
     location_names = {**ALIASES, "都可以": ("都可以", "哪裡都可以", "地點都可以", "不限地點", "地點不限")}
     if facts.location_id is not None:
+        candidates = location_names.get(facts.location_id, (facts.location_id,))
         mentions = [
             match
-            for match in re.finditer(
-                "|".join(
-                    map(re.escape, location_names.get(facts.location_id, (facts.location_id,)))
-                ),
-                original,
-            )
+            for match in re.finditer("|".join(map(re.escape, candidates)), original)
         ]
+        if not mentions and facts.location_id not in location_names:
+            stripped = re.sub(r"(?:宿舍)?(?:大?門口|樓下|前面|旁邊|附近|那邊)$", "", facts.location_id).strip()
+            if len(stripped) >= 2 and stripped in original:
+                facts.location_id = stripped
+                mentions = list(re.finditer(re.escape(stripped), original))
         if not mentions or re.search(
             r"(?:不是|並非|不在|不要|不選|非)\s*$",
             original[max(0, mentions[-1].start() - 6) : mentions[-1].start()],
         ):
             facts.location_id = None
             warnings.append("地點缺少可核對的本人陳述，已清空並補問，不會採用模型預設地點。")
+    if facts.location_id is None:
+        place = extract_place(original)
+        if place:
+            facts.location_id = place
     # Keep a copied example's location out of the human-visible title as well.
     corrected_title = facts.title
     for location, aliases in location_names.items():
@@ -561,3 +566,24 @@ def extract_bonus(original: str, roles: list[str], existing: str | None = None) 
     if not perks:
         return None
     return "、".join(dict.fromkeys(perks))[:80]
+
+
+def extract_place(original: str) -> str | None:
+    """Extract an explicit non-negated NCCU campus landmark or stated place when LLM omitted/over-trimmed it."""
+    landmark_pat = re.compile(
+        r"(?:政大)?(?:自強[一二三四五六七八九十\d]+舍|莊敬[一二三四五六七八九十\d外]+舍|"
+        r"達賢圖書館|總圖|商學院|綜合院館|綜院|大勇樓|道藩樓|季陶樓|百年樓|資訊大樓|體育館|麥側|"
+        r"指南路[一二三四五六七八九十\d]*段?[\d之\-]*號?)"
+    )
+    for match in reversed(list(landmark_pat.finditer(original))):
+        clause_start = max((original.rfind(sep, 0, match.start()) for sep in "，。；\n"), default=-1) + 1
+        clause_end = min(
+            (idx for sep in "，。；\n" if (idx := original.find(sep, match.end())) != -1),
+            default=len(original),
+        )
+        clause = original[clause_start:clause_end]
+        if re.search(r"不是|並非|不在|不要|不選|非|如果|假如|[?？]", clause):
+            continue
+        return match.group(0)
+    return None
+
