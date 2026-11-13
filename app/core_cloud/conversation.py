@@ -32,7 +32,7 @@ QuestionField = Literal[
 
 
 class ConversationPreferences(StrictModel):
-    tone: Literal["warm", "direct", "playful"] = "warm"
+    tone: Literal["warm", "direct", "playful", "tsundere"] = "warm"
     context: str = Field(default="", max_length=500)
 
     @field_validator("context")

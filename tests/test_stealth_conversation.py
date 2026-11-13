@@ -240,3 +240,10 @@ def test_clock_window_and_custom_dorm_location_are_preserved_without_redundant_d
     assert result.signal.starts_at == datetime(2026, 11, 13, 18, 0, tzinfo=ZoneInfo("Asia/Taipei")).astimezone(timezone.utc)
     assert result.signal.ends_at == datetime(2026, 11, 13, 20, 0, tzinfo=ZoneInfo("Asia/Taipei")).astimezone(timezone.utc)
 
+
+def test_tsundere_tone_preference_is_accepted():
+    from app.core_cloud.conversation import ConversationPreferences
+
+    prefs = ConversationPreferences(tone="tsundere", context="喜歡喝無糖茶")
+    assert prefs.tone == "tsundere"
+
