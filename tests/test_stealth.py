@@ -170,7 +170,7 @@ def test_cooldown_and_no_duplicate_invites(service):
     assert len(first) == 1
 
 
-def test_daily_quota_includes_other_users_invites(service):
+def test_matching_is_not_capped_by_daily_invite_limit(service):
     users, _ = setup_group(service)
     for user in users:
         service.put_agent(
@@ -184,8 +184,7 @@ def test_daily_quota_includes_other_users_invites(service):
             ),
             NOW,
         )
-    assert len(service.run_matches(users[0], 5, NOW)) == 1
-    assert service.run_matches(users[1], 5, NOW + timedelta(seconds=31)) == []
+    assert len(service.run_matches(users[0], 5, NOW)) == 3
 
 
 def test_revoke_is_idempotent_and_invalidates(service):

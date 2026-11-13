@@ -4,7 +4,6 @@ import base64
 import json
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
-from zoneinfo import ZoneInfo
 
 from app.stealth.errors import StealthError
 from app.stealth.matching import find_candidates
@@ -179,12 +178,6 @@ class StealthService:
             unit.event(actor, "match_run", now)
             proposals = unit.all("proposals")
             seen = {p.fingerprint for p in proposals}
-            counts = {user: 0 for user in agents}
-            for proposal in proposals:
-                for member in proposal.members:
-                    zone = ZoneInfo(agents[member.user_id].timezone)
-                    if proposal.created_at.astimezone(zone).date() == now.astimezone(zone).date():
-                        counts[member.user_id] += 1
             candidates = find_candidates(
                 actor,
                 unit.all("signals"),
@@ -197,15 +190,10 @@ class StealthService:
                 candidates.sort(key=lambda p: priority.get(p.fingerprint, len(priority)))
             created = []
             for candidate in candidates:
-                if candidate.fingerprint in seen or any(
-                    counts[m.user_id] >= agents[m.user_id].daily_invite_limit
-                    for m in candidate.members
-                ):
+                if candidate.fingerprint in seen:
                     continue
                 unit.put("proposals", candidate)
                 seen.add(candidate.fingerprint)
-                for member in candidate.members:
-                    counts[member.user_id] += 1
                 created.append(self._view(candidate, actor, now, unit))
                 if len(created) >= maximum:
                     break
