@@ -1,3 +1,4 @@
+import base64
 from datetime import datetime
 from typing import Annotated, Literal
 from uuid import NAMESPACE_URL, UUID, uuid5
@@ -184,6 +185,17 @@ def reply_speech(value: SpeechInput, request: Request, user: UserDep, response: 
     if settings.stealth_conversation_provider != "gemini":
         raise HTTPException(503, "stealth_gemini_not_configured")
     return synthesize(value, settings.stealth_gemini_api_key, str(user.id))
+
+
+@router.get("/speech-audio")
+def reply_speech_audio(text: Annotated[str, Query(min_length=1, max_length=600)], request: Request, user: UserDep):
+    result = reply_speech(SpeechInput(text=text), request, user, Response())
+    wav_bytes = base64.b64decode(result["audio_base64"])
+    return Response(
+        content=wav_bytes,
+        media_type="audio/wav",
+        headers={"Cache-Control": "no-store", "Content-Length": str(len(wav_bytes))},
+    )
 
 
 @router.post("/speech-stream")
