@@ -79,3 +79,139 @@ begin
 end $$;
 revoke all on function public.core_stealth_history(timestamptz,uuid,integer) from public,anon;
 grant execute on function public.core_stealth_history(timestamptz,uuid,integer) to authenticated;
+
+create or replace function core_private.stealth_ensure_initial_terms(p_id uuid)
+returns public.core_stealth_proposals
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  p public.core_stealth_proposals;
+  cat_label text;
+  place_label text;
+  summary_text text;
+  cost_val integer;
+  deadline_val timestamptz;
+  order_m integer;
+  pickup_m integer;
+  initial_terms jsonb;
+  msg_ts timestamptz;
+begin
+  select * into p from public.core_stealth_proposals where id = p_id for update;
+  if not found then
+    return null;
+  end if;
+
+  insert into public.core_stealth_rooms(proposal_id)
+  values (p.id)
+  on conflict do nothing;
+
+  if p.terms is not null and p.terms_revision > 0 then
+    if not exists (
+      select 1 from public.core_stealth_room_messages
+      where proposal_id = p.id and event_kind = 'terms'
+    ) then
+      select coalesce(min(created_at) - interval '1 second', clock_timestamp())
+        into msg_ts
+        from public.core_stealth_room_messages
+        where proposal_id = p.id;
+      insert into public.core_stealth_room_messages(
+        proposal_id, sender_id, content, request_key, event_kind, terms_revision, event_terms, created_at
+      ) values (
+        p.id, coalesce(p.terms_author_id, p.owners[1]), '提出了拼單方案', gen_random_uuid(), 'terms', p.terms_revision, p.terms, msg_ts
+      );
+    end if;
+    return p;
+  end if;
+
+  cat_label := case p.payload->>'category'
+    when 'pizza' then '披薩'
+    when 'meal' then '正餐'
+    when 'drink' then '飲料'
+    when 'bakery' then '麵包'
+    when 'snack' then '零食'
+    else '餐點'
+  end;
+
+  place_label := case p.payload->>'location_id'
+    when 'main_gate' then '政大正門'
+    when 'east_gate' then '政大東側門'
+    when 'south_gate' then '政大南門'
+    else coalesce(nullif(btrim(p.payload->>'location_id'), ''), '政大正門')
+  end;
+
+  summary_text := '一起分享' || cat_label || '，在' || place_label || '協調集合。每人費用、下單與取餐依全員最後確認的方案處理。';
+
+  select coalesce(
+    (p.payload->>'known_cost_twd')::integer,
+    (p.payload->>'budget_max_twd')::integer,
+    (select min((s.payload->>'known_cost_twd')::integer) from public.core_stealth_signals s where s.id = any(p.signals)),
+    (select min((s.payload->>'budget_max_twd')::integer) from public.core_stealth_signals s where s.id = any(p.signals)),
+    case p.payload->>'category'
+      when 'drink' then 80
+      when 'snack' then 80
+      when 'bakery' then 80
+      else 120
+    end
+  ) into cost_val;
+
+  deadline_val := greatest(
+    coalesce((p.payload->>'ends_at')::timestamptz, clock_timestamp() + interval '24 hours'),
+    clock_timestamp() + interval '30 minutes'
+  );
+
+  select coalesce(
+    (
+      select x.n::integer
+      from unnest(p.signals) with ordinality x(id, n)
+      join public.core_stealth_signals s on s.id = x.id
+      where s.payload->'roles' ? 'order'
+      order by x.n
+      limit 1
+    ),
+    1
+  ) into order_m;
+
+  select coalesce(
+    (
+      select x.n::integer
+      from unnest(p.signals) with ordinality x(id, n)
+      join public.core_stealth_signals s on s.id = x.id
+      where s.payload->'roles' ? 'pickup'
+      order by x.n
+      limit 1
+    ),
+    case when cardinality(p.owners) >= 2 then 2 else 1 end
+  ) into pickup_m;
+
+  initial_terms := jsonb_build_object(
+    'content', summary_text,
+    'cost_per_person_twd', cost_val,
+    'deadline_at', to_char(deadline_val at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+    'order_member', order_m,
+    'pickup_member', pickup_m
+  );
+
+  update public.core_stealth_proposals
+  set terms = initial_terms,
+      terms_revision = 1,
+      terms_author_id = p.owners[1],
+      terms_acceptances = '{}'::jsonb
+  where id = p.id
+  returning * into p;
+
+  select coalesce(min(created_at) - interval '1 second', clock_timestamp())
+    into msg_ts
+    from public.core_stealth_room_messages
+    where proposal_id = p.id;
+
+  insert into public.core_stealth_room_messages(
+    proposal_id, sender_id, content, request_key, event_kind, terms_revision, event_terms, created_at
+  ) values (
+    p.id, p.owners[1], '提出了拼單方案', gen_random_uuid(), 'terms', 1, initial_terms, msg_ts
+  );
+
+  return p;
+end $$;
+
