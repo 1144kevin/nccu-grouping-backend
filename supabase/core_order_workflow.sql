@@ -53,6 +53,20 @@ begin
  end loop;
 end $$;
 
+create or replace function core_private.post_formation_locked(target_post_id uuid) returns boolean
+language sql stable security definer set search_path='' as $$
+ select exists (
+  select 1 from public.core_posts p
+  left join core_private.order_workflow w on w.post_id=p.id
+  where p.id=target_post_id
+   and (
+    coalesce(w.stage,'waiting')<>'waiting'
+    or exists(select 1 from public.core_order_completions c where c.post_id=p.id)
+    or exists(select 1 from core_private.order_formation_votes v where v.post_id=p.id and v.member_id=p.author_id and v.revision=coalesce(w.revision,0))
+   )
+ );
+$$;
+
 -- The workflow row and post row are locked in the same transaction as every
 -- membership change, so a departure cannot race a withdrawal penalty.
 create function core_private.order_workflow_membership() returns trigger
@@ -63,7 +77,7 @@ begin
  insert into core_private.order_workflow(post_id) values(p.id) on conflict do nothing;
  select * into w from core_private.order_workflow where post_id=p.id for update;
  if tg_op='INSERT' or old.status is distinct from new.status then
-  if new.status='accepted' and w.stage<>'waiting' then
+  if new.status in ('pending','accepted') and core_private.post_formation_locked(p.id) then
    raise exception using errcode='PT409',message='order_already_formed';
   end if;
   if tg_op='UPDATE' and old.status='accepted' and new.status='cancelled' and p.demo_batch is null and auth.uid()=new.requester_id and current_setting('app.order_explicit_action',true)='withdraw' then
@@ -73,14 +87,15 @@ begin
     on conflict(source_key) do nothing;
   end if;
   if tg_op='UPDATE' and old.status='accepted' and new.status<>'accepted' and w.stage='formed' then
-   update core_private.order_workflow set stage='waiting',updated_at=clock_timestamp() where post_id=p.id returning * into w;
+   update core_private.order_workflow set stage='waiting',revision=revision+1,updated_at=clock_timestamp() where post_id=p.id returning * into w;
+   delete from core_private.order_formation_votes where post_id=p.id;
    perform core_private.order_workflow_notice(p.id,'waiting','reopened:'||p.id::text||':'||w.revision::text);
   end if;
   if w.stage='waiting' and (new.status='accepted' or (tg_op='UPDATE' and old.status='accepted')) then
    update core_private.order_workflow set revision=revision+1,updated_at=clock_timestamp() where post_id=p.id;
    delete from core_private.order_formation_votes where post_id=p.id;
    select 1+count(*) into joined from public.core_join_requests where post_id=p.id and status='accepted';
-   if joined>=p.capacity then
+   if p.request_key like 'stealth-formation-%' and joined>=p.capacity then
     update core_private.order_workflow set stage='formed',formed_once=true,updated_at=clock_timestamp() where post_id=p.id;
     perform core_private.order_workflow_notice(p.id,'formed','formed:'||p.id::text);
    end if;
@@ -116,7 +131,7 @@ language plpgsql security definer set search_path='' set statement_timeout='8s' 
 declare actor uuid:=core_private.account_guard(); p public.core_posts; w core_private.order_workflow;
  member boolean; member_count integer; vote_count integer; image uuid; result jsonb;
 begin
- if action not in ('view','vote','depart','purchase','complete') or jsonb_typeof(args) is distinct from 'object'
+ if action not in ('view','vote','unvote','depart','purchase','complete') or jsonb_typeof(args) is distinct from 'object'
    or args-array['post_id','image_id'] <> '{}'::jsonb then
   raise exception using errcode='PT422',message='invalid_order_workflow'; end if;
  select * into p from public.core_posts where id=(args->>'post_id')::uuid for update;
@@ -144,6 +159,13 @@ begin
    update core_private.order_workflow set stage='formed',formed_once=true,updated_at=clock_timestamp() where post_id=p.id returning * into w;
    perform core_private.order_workflow_notice(p.id,'formed','formed:'||p.id::text);
   end if;
+ elsif action='unvote' then
+  if actor<>p.author_id then raise exception using errcode='PT403',message='host_required'; end if;
+  if w.stage not in ('waiting','formed') or p.request_key like 'stealth-formation-%' then
+   raise exception using errcode='PT409',message='order_unavailable'; end if;
+  update core_private.order_workflow set stage='waiting',revision=revision+1,updated_at=clock_timestamp() where post_id=p.id returning * into w;
+  delete from core_private.order_formation_votes where post_id=p.id;
+  perform core_private.order_workflow_notice(p.id,'waiting','reopened:'||p.id::text||':'||w.revision::text);
  elsif action='depart' then
   if actor<>p.author_id then raise exception using errcode='PT403',message='host_required'; end if;
   if w.stage<>'formed' or member_count<2 then raise exception using errcode='PT409',message='order_not_formed'; end if;

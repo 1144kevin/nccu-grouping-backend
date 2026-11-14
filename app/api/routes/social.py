@@ -67,7 +67,7 @@ class ReadDirect(Input):
 
 
 class OrderWorkflowAction(Input):
-    action: Literal["vote", "depart", "purchase", "complete"]
+    action: Literal["vote", "unvote", "depart", "purchase", "complete"]
     image_id: UUID | None = None
 
 
