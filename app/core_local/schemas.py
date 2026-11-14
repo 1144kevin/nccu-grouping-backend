@@ -66,7 +66,7 @@ class ProfileView(BaseModel):
     display_name: str
     created_at: datetime
     bio: str = ""
-    badge: Literal["🍜", "🥐", "🍕", "🧋", "🍱", "🍍"] = "🍱"
+    badge: Literal["🍜", "🥐", "🍕", "🧋", "🍱", "🍍", "eagle-01", "eagle-02", "eagle-03", "eagle-04", "eagle-05", "eagle-06", "eagle-07", "eagle-08", "eagle-09", "eagle-10", "eagle-11", "eagle-12", "eagle-13", "eagle-14", "eagle-15", "eagle-16"] = "🍱"
     version: int = 1
     auth_mode: Literal["local_development", "supabase"] = "local_development"
     email_verified: bool = False
@@ -77,7 +77,7 @@ class ProfileInput(Input):
     avatar_id: UUID | None = None
     display_name: str = Field(min_length=1, max_length=40)
     bio: str = Field(max_length=160)
-    badge: Literal["🍜", "🥐", "🍕", "🧋", "🍱", "🍍"]
+    badge: Literal["🍜", "🥐", "🍕", "🧋", "🍱", "🍍", "eagle-01", "eagle-02", "eagle-03", "eagle-04", "eagle-05", "eagle-06", "eagle-07", "eagle-08", "eagle-09", "eagle-10", "eagle-11", "eagle-12", "eagle-13", "eagle-14", "eagle-15", "eagle-16"]
     expected_version: int = Field(ge=1, strict=True)
 
 
