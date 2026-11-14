@@ -141,6 +141,38 @@ def test_automatic_draft_is_person_independent_private_text_free_and_read_only()
     assert not first.my_terms_accepted and first.formed_post_id is None
 
 
+def test_shared_item_reasons_and_draft_are_concrete_and_do_not_invent_prices():
+    value = {**match_value(), 'shared_items': ['巧克力'], 'known_cost_twd': None}
+    result = CloudMatch.model_validate(value)
+    assert '巧克力' in result.agent_draft.recommendation_reasons[0]
+    assert '巧克力' in result.agent_draft.content
+    assert result.agent_draft.cost_per_person_twd is None
+    assert result.agent_draft == CloudMatch.model_validate({**value, 'my_member_number': 2}).agent_draft
+
+
+def test_llm_receives_all_participant_facts_and_keeps_multiple_reasons():
+    import json
+    from types import SimpleNamespace
+    from app.core_cloud.planner_ai import polish_match_draft
+
+    value = match_value()
+    value['planning_members'][1]['tags'] = ['BONUS:願意多付10元跑腿費', '巧克力']
+    match = CloudMatch.model_validate(value)
+    reasons = ['共同商品', '取餐意願', '購買意願', '額外付費意願', '集合地點', '時間配合']
+
+    class Transport:
+        def request(self, endpoint, payload, **kwargs):
+            facts = json.loads(payload['input'][1]['content'])
+            assert facts['participants'][1]['tags'] == value['planning_members'][1]['tags']
+            assert facts['participants'][1]['roles'] == ['order', 'pickup']
+            return {'output_text': json.dumps({'content': '依雙方需求協調商品與分工，實際費用待確認。', 'recommendation_reasons': reasons})}
+
+    result = polish_match_draft(match, settings=SimpleNamespace(stealth_ai_provider='openai', environment='local'), transport=Transport())
+    assert not result.fallback
+    assert all(reason in result.draft.recommendation_reasons for reason in reasons)
+    assert any('額外合作條件' in reason for reason in result.draft.recommendation_reasons)
+
+
 @pytest.mark.parametrize("status", ["formed", "unavailable"])
 def test_no_new_draft_for_formed_or_invalidated_proposal(status):
     assert CloudMatch.model_validate({**match_value(), "status": status}).agent_draft is None

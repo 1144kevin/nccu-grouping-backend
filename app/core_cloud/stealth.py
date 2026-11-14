@@ -7,12 +7,14 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 from fastapi import HTTPException
 from pydantic import AwareDatetime, BaseModel, Field, field_validator, model_validator
 
+from app.core_local.schemas import Location
 from app.core_cloud.planner import AgentTermsDraft, PlanningMember, plan_terms
 from app.core_cloud.store import SupabaseCoreStore
 from app.stealth.schemas import Agent, AgentInput, Signal, SignalInput, StrictModel
 
 
 class CloudTerms(StrictModel):
+    location: Location | None = None
     content: str = Field(min_length=10, max_length=300)
     cost_per_person_twd: int = Field(ge=0, le=100000, strict=True)
     deadline_at: AwareDatetime
@@ -101,6 +103,7 @@ class CloudMatch(BaseModel):
     coordination_opened: bool = False
     planning_members: list[PlanningMember] = Field(default_factory=list, exclude=True)
     agent_draft: AgentTermsDraft | None = None
+    shared_items: list[str] = Field(default_factory=list)
     highlights: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -120,7 +123,7 @@ class CloudMatch(BaseModel):
                 unknowns=self.unknowns,
                 reasons=self.reasons,
             )
-        highlights: list[str] = []
+        highlights: list[str] = [f"雙方都提到「{item}」，可以一起討論同品項拼單" for item in self.shared_items[:4]]
         partners = [m for m in self.planning_members if m.number != self.my_member_number]
         if any("pickup" in m.roles for m in partners):
             highlights.append("對方願意跑這一趟幫忙取餐")
@@ -137,8 +140,10 @@ class CloudMatch(BaseModel):
                 highlights.append(f"已確認每人分攤金額約 NT$ {self.known_cost_twd}")
         place_names = {"main_gate": "政大正門", "east_gate": "東側門", "south_gate": "南門"}
         place = place_names.get(self.location_id, self.location_id)
-        if self.location_id not in ("main_gate", "east_gate", "south_gate", "都可以"):
-            highlights.append(f"對方今天也會去／經過「{place}」，剛好可以順路一起湊單")
+        if self.semantic_proposal:
+            highlights.append(f"集合地點暫以「{place}」作為討論起點，仍需雙方確認")
+        elif self.location_id not in ("main_gate", "east_gate", "south_gate", "都可以"):
+            highlights.append(f"雙方需求中的集合地點相符：「{place}」")
         else:
             highlights.append(f"雙方都方便在「{place}」碰面分攤")
         ignored_reasons = {
@@ -154,6 +159,17 @@ class CloudMatch(BaseModel):
             if r not in ignored_reasons and "向量搜尋" not in r and "語義相近" not in r and r not in highlights:
                 highlights.append(r)
         self.highlights = highlights[:5]
+        if self.agent_draft:
+            for member in self.planning_members:
+                for role, label in (("pickup", "取餐／跑腿"), ("order", "購買／下單"), ("coupon", "分享優惠券，適用條件仍待核對")):
+                    if role in member.roles:
+                        self.agent_draft.recommendation_reasons.append(f"夥伴 {member.number} 表示願意{label}")
+                for tag in member.tags:
+                    if tag.startswith("BONUS:"):
+                        self.agent_draft.recommendation_reasons.append(f"夥伴 {member.number} 提供的額外合作條件：{tag[6:]}")
+            self.agent_draft.recommendation_reasons = list(dict.fromkeys([*[f"雙方都提到「{item}」，可以一起討論同品項拼單" for item in self.shared_items[:4]], *self.agent_draft.recommendation_reasons])) or [f"暫以{place}為集合討論起點，請雙方確認", *self.agent_draft.confirmed_facts[:2]]
+            if self.shared_items:
+                self.agent_draft.content = "一起拼「" + "、".join(self.shared_items[:3]) + "」。" + self.agent_draft.content
         return self
 
 

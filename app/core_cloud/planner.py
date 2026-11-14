@@ -9,6 +9,12 @@ from pydantic import AwareDatetime, BaseModel, Field
 class PlanningMember(BaseModel):
     number: int = Field(ge=1, le=3)
     roles: list[Literal["order", "pickup", "coupon", "share"]]
+    tags: list[str] = Field(default_factory=list)
+    location_id: str | None = None
+    starts_at: AwareDatetime | None = None
+    ends_at: AwareDatetime | None = None
+    budget_max_twd: int | None = None
+    known_cost_twd: int | None = None
 
 
 class RoleSuggestion(BaseModel):
@@ -144,7 +150,7 @@ def plan_terms(
         r
         for r in dict.fromkeys(reasons or [])
         if r and r not in ignored and "向量搜尋" not in r and "語義相近" not in r
-    ][:4]
+    ]
 
     return AgentTermsDraft(
         content=content,
