@@ -53,6 +53,8 @@ returns public.core_stealth_proposals language plpgsql security definer set sear
 declare p public.core_stealth_proposals;
 begin
  select * into p from public.core_stealth_proposals where id=p_id for update;
+ if not found then return null; end if;
+ insert into public.core_stealth_rooms(proposal_id) values (p.id) on conflict do nothing;
  return p;
 end $$;
 revoke all on function core_private.stealth_ensure_initial_terms(uuid) from public,anon,authenticated;
