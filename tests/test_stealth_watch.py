@@ -33,7 +33,7 @@ def test_watch_finds_future_opportunities_without_another_client_request():
     watch.cycle()
     watch.cycle()
     assert owner.run.call_count == 2
-    owner.run.assert_called_with(3)
+    owner.run.assert_called_with(1)
     assert not hasattr(owner, "decide")  # Background work never accepts for its owner.
 
 

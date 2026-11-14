@@ -219,7 +219,7 @@ class CloudStealth:
         )
         # The signal is committed first. A matching outage must never imply it was lost.
         try:
-            run = self.run(3)
+            run = self.run(1)
             return CloudSignalCreated(signal=signal, matching="completed", new_matches=run.created)
         except HTTPException as error:
             state = {

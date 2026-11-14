@@ -75,7 +75,7 @@ def _signal_locked_in_chat(service, signals) -> bool:
     )
 
 
-def discover(service, embeddings: EmbeddingProvider, maximum=3):
+def discover(service, embeddings: EmbeddingProvider, maximum=1):
     now = datetime.now(UTC)
     active_signals = [s for s in service.signals().items if s.status == "active" and s.expires_at > now][
         :10
@@ -97,7 +97,7 @@ def discover(service, embeddings: EmbeddingProvider, maximum=3):
             "args": {
                 "model_id": queries.model_id,
                 "queries": items,
-                "max_results": min(maximum, 3),
+                "max_results": min(maximum, 1),
             },
         },
         token=service.store.token,

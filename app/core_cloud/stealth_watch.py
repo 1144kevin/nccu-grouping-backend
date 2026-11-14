@@ -60,9 +60,12 @@ class StealthWatch:
                     self.unsubscribe(actor)
                     continue
                 matches_fn = getattr(service, "matches", None)
-                if callable(matches_fn) and any(m.status == "ready" for m in matches_fn().items):
+                if callable(matches_fn) and any(
+                    m.status == "ready" or (m.status == "pending" and m.my_decision in ("pending", "accepted"))
+                    for m in matches_fn().items
+                ):
                     continue
-                service.run(3)
+                service.run(1)
             except HTTPException as error:
                 if error.status_code in (401, 403, 404, 429) or error.detail in (
                     "openai_budget_unavailable",
