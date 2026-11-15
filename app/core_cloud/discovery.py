@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime
 
+from app.core_cloud.match_judge import judge_candidate_pair
 from app.stealth.ollama import LocalModelError
 from app.stealth.provider_contracts import EmbeddingProvider
 
@@ -75,25 +76,32 @@ def _signal_locked_in_chat(service, signals) -> bool:
     )
 
 
-def discover(service, embeddings: EmbeddingProvider, maximum=1):
+def discover(
+    service,
+    embeddings: EmbeddingProvider,
+    maximum=1,
+    *,
+    settings=None,
+    transport=None,
+):
     now = datetime.now(UTC)
     active_signals = [s for s in service.signals().items if s.status == "active" and s.expires_at > now][
         :10
     ]
     if not active_signals or _signal_locked_in_chat(service, active_signals):
-        return {"created": 0, "indexed": 0, "requires_unanimous_confirmation": True}
+        return {"created": 0, "indexed": 0, "is_llm": True, "requires_unanimous_confirmation": True}
     signals, queries, indexed = index_active_signals(service, embeddings, require_query=True)
     if not signals:
-        return {"created": 0, "indexed": 0, "requires_unanimous_confirmation": True}
+        return {"created": 0, "indexed": 0, "is_llm": True, "requires_unanimous_confirmation": True}
     items = [
         {"signal_id": str(s.id), "version": s.version, "vector": v}
         for s, v in zip(signals, queries.vectors, strict=True)
     ]
-    result = service.store._request(
+    raw_candidates = service.store._request(
         "POST",
         "/rest/v1/rpc/core_semantic_discovery",
         body={
-            "action": "search",
+            "action": "candidates",
             "args": {
                 "model_id": queries.model_id,
                 "queries": items,
@@ -102,4 +110,72 @@ def discover(service, embeddings: EmbeddingProvider, maximum=1):
         },
         token=service.store.token,
     )
-    return {**result, "indexed": indexed}
+    candidates = raw_candidates.get("candidates") or []
+    if not candidates:
+        return {
+            "created": 0,
+            "indexed": indexed,
+            "model_id": queries.model_id,
+            "is_llm": True,
+            "requires_unanimous_confirmation": True,
+        }
+
+    runtime_settings = settings or getattr(service.store, "settings", None)
+    # Filter first with fail-closed LLM compatibility judgment, then rank qualified candidates.
+    qualified = []
+    for candidate in candidates:
+        verdict = judge_candidate_pair(
+            candidate, settings=runtime_settings, transport=transport
+        )
+        if verdict.verdict != "compatible" or not verdict.reasons or verdict.conflicts:
+            continue
+        qualified.append((verdict, candidate))
+
+    if not qualified:
+        return {
+            "created": 0,
+            "indexed": indexed,
+            "model_id": queries.model_id,
+            "is_llm": True,
+            "requires_unanimous_confirmation": True,
+        }
+
+    qualified.sort(
+        key=lambda pair: (
+            pair[0].score,
+            float(pair[1].get("similarity") or 0.0),
+            str(pair[1].get("fingerprint") or ""),
+        ),
+        reverse=True,
+    )
+
+    created = 0
+    limit = min(maximum, 1)
+    for verdict, candidate in qualified:
+        committed = service.store._request(
+            "POST",
+            "/rest/v1/rpc/core_semantic_discovery",
+            body={
+                "action": "commit",
+                "args": {
+                    "signal_id": candidate["own_signal_id"],
+                    "candidate_signal_id": candidate["candidate_signal_id"],
+                    "score": verdict.score,
+                    "reasons": verdict.reasons,
+                    "unknowns": verdict.unknowns,
+                    "is_llm": True,
+                },
+            },
+            token=service.store.token,
+        )
+        created += int(committed.get("created") or 0)
+        if created >= limit:
+            break
+
+    return {
+        "created": created,
+        "indexed": indexed,
+        "model_id": queries.model_id,
+        "is_llm": True,
+        "requires_unanimous_confirmation": True,
+    }

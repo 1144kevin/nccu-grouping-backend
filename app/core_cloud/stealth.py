@@ -183,7 +183,7 @@ class CloudSignals(BaseModel):
 
 class CloudRun(BaseModel):
     created: int = Field(ge=0, le=5)
-    is_llm: Literal[False] = False
+    is_llm: bool = True
 
 
 class CloudSignalCreated(BaseModel):
@@ -260,12 +260,17 @@ class CloudStealth:
         from app.stealth.provider_registry import local_semantic_matcher
 
         try:
-            result = discover(self, local_semantic_matcher(self.store.settings).embeddings, maximum)
+            result = discover(
+                self,
+                local_semantic_matcher(self.store.settings).embeddings,
+                maximum,
+                settings=self.store.settings,
+            )
         except LocalModelError as exc:
             raise HTTPException(
                 429 if str(exc) == "openai_quota_or_rate_limit" else 503, str(exc)
             ) from None
-        return CloudRun(created=result["created"], is_llm=False)
+        return CloudRun(created=result["created"], is_llm=bool(result.get("is_llm", True)))
 
     def decide(self, proposal_id: UUID, decision: str) -> CloudMatch:
         return CloudMatch.model_validate(

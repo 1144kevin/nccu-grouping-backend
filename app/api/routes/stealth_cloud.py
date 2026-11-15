@@ -452,7 +452,7 @@ def semantic_matches(value: SemanticRequest, service: Cloud):
 def discover_matches(service: Cloud):
     matcher = local_semantic_matcher(service.store.settings)
     try:
-        return discover(service, matcher.embeddings)
+        return discover(service, matcher.embeddings, settings=service.store.settings)
     except LocalModelError as exc:
         raise HTTPException(503, str(exc)) from exc
 

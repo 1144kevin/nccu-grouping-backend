@@ -29,11 +29,40 @@ def test_cloud_discovery_indexes_only_own_active_signals_and_uses_session():
 
     def request(*args, **kwargs):
         calls.append(kwargs)
-        return {"indexed": 1} if kwargs["body"]["action"] == "index" else {"created": 1}
+        action = kwargs["body"]["action"]
+        if action == "index":
+            return {"indexed": 1}
+        if action == "candidates":
+            return {
+                "candidates": [
+                    {
+                        "fingerprint": "fp-1",
+                        "own_signal_id": str(signal.id),
+                        "candidate_signal_id": "00000000-0000-0000-0000-000000000099",
+                        "similarity": 0.88,
+                        "own": {"title": "想喝熱湯", "category": "meal"},
+                        "partner": {"title": "想喝熱湯一起分", "category": "meal"},
+                    }
+                ]
+            }
+        return {"created": 1}
+
+    class FakeTransport:
+        def request(self, path, payload, **kwargs):
+            return {
+                "output_text": '{"verdict":"compatible","score":88,"reasons":["雙方都想喝熱湯，可一起拼單"],"conflicts":[],"unknowns":[]}'
+            }
+
+    settings = SimpleNamespace(
+        stealth_ai_provider="openai",
+        environment="local",
+        core_cloud_enabled=False,
+        local_openai_api_key="sk-test",
+    )
 
     service = SimpleNamespace(
         signals=lambda: SimpleNamespace(items=[signal]),
-        store=SimpleNamespace(token="synthetic-user", _request=request),
+        store=SimpleNamespace(token="synthetic-user", settings=settings, _request=request),
     )
 
     class Provider:
@@ -43,10 +72,19 @@ def test_cloud_discovery_indexes_only_own_active_signals_and_uses_session():
             )
             return VectorBatch(model_id="synthetic@v1", dimensions=512, vectors=[[1] + [0] * 511])
 
-    result = discover(service, Provider())
-    assert result == {"created": 1, "indexed": 1}
+    result = discover(service, Provider(), settings=settings, transport=FakeTransport())
+    assert result == {
+        "created": 1,
+        "indexed": 1,
+        "is_llm": True,
+        "model_id": "synthetic@v1",
+        "requires_unanimous_confirmation": True,
+    }
     assert all(c["token"] == "synthetic-user" for c in calls)
+    assert [c["body"]["action"] for c in calls] == ["index", "candidates", "commit"]
     assert calls[1]["body"]["args"]["queries"][0]["version"] == 2
+    assert calls[2]["body"]["args"]["is_llm"] is True
+    assert calls[2]["body"]["args"]["score"] == 88
     calls.clear()
     signals, batch, count = index_active_signals(service, Provider())
     assert signals == [signal] and batch.model_id == "synthetic@v1" and count == 1
