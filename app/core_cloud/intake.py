@@ -173,7 +173,7 @@ location_id: 政大正門用main_gate，東側門用east_gate，南門用south_g
 delay_minutes 是從現在多久後開始，duration_minutes 是可配合長度。1小時=60分鐘。
 若使用者已說今天/明天幾點或幾點到幾點（例如「今天晚上6點到8點」），請將該原句填入 evidence.start，不可重複追問「大約多久後開始約」。
 budget_max_twd 是每人預算上限，known_cost_twd 是已確認每人報價，兩者不同。
-budget_unknown 只有本人明確說不知道預算/預算未知才 true，否則 false。
+budget_unknown 只有本人明確說不知道預算、預算未知、都可以、不限、之後再說或視購買金額／品項再決定才 true，否則 false。
 若提供的是總價、整團價格或無法判斷每人金額，known_cost_twd=null 且 cost_needs_clarification=true。
 本人明確提供免費食物時 known_cost_twd=0，cost 摘錄免費原句；免費不是未知。
 明確說「費用未知」或「還沒報價」時 known_cost_twd=null、cost_needs_clarification=false。
@@ -422,8 +422,12 @@ def ground(facts: IntakeFacts, original: str) -> list[str]:
         return None
 
     budget = quote("budget")
+    budget_unknown_re = (
+        r"未知|不知道|不清楚|還沒|未定|沒概念|待確認|不確定|都可以|沒差|無所謂|不限|沒限制|沒預算"
+        r"|看情況|看狀況|看買|看品項|看對方|根據[^\n，。；]{0,20}(?:再說|決定|看)|之後再說|再說|再決定|再討論|待討論|不一定|到時候"
+    )
     if facts.budget_unknown and (
-        not budget or not re.search(r"未知|不知道|不清楚|還沒|未定|沒概念|待確認|不確定", budget)
+        not budget or not re.search(budget_unknown_re, budget)
     ):
         facts.budget_unknown = False
     if facts.budget_max_twd is not None and (
@@ -533,6 +537,15 @@ def ground(facts: IntakeFacts, original: str) -> list[str]:
     if stated_budget:
         facts.budget_max_twd, facts.evidence.budget = stated_budget
         facts.budget_unknown = False
+    elif facts.budget_max_twd is None and not facts.budget_unknown:
+        deferred = re.search(
+            r"(?:預算[^\n，。；]{0,20}(?:未知|不知道|不清楚|未定|待確認|不確定|都可以|不限|再說|之後|待討論|再討論|再決定|看情況|看買)"
+            r"|根據[^\n，。；]{0,20}(?:金額|多少|買)[^\n，。；]{0,12}(?:再說|決定|看))",
+            original,
+        )
+        if deferred:
+            facts.budget_unknown = True
+            facts.evidence.budget = deferred.group().strip(" ，。；\n")
     full_day = all_day(original)
     if full_day:
         facts.duration_minutes = 1440
